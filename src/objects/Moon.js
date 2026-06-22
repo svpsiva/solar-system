@@ -13,6 +13,7 @@ export function createMoon(moon, startAngle = 0) {
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.x = moon.orbitRadius;
+  mesh.userData.moonName = moon.name;
   pivot.add(mesh);
   pivot.rotation.y = startAngle;
 

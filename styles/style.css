@@ -256,3 +256,56 @@ body {
     transform: scale(1.06);
   }
 }
+
+/* Moon name popup label */
+.moon-label {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 24, 48, 0.88);
+  color: #fff;
+  font-size: clamp(18px, 4vw, 28px);
+  font-weight: 700;
+  padding: 10px 28px;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  z-index: 30;
+  opacity: 1;
+  transition: opacity 0.8s ease;
+  white-space: nowrap;
+}
+.moon-label.fade {
+  opacity: 0;
+}
+
+/* Compact layout for landscape phones (short viewport) */
+@media (orientation: landscape) and (max-height: 480px) {
+  .big-btn {
+    padding: 6px 12px;
+    font-size: clamp(12px, 2.4vw, 17px);
+    min-height: 38px;
+  }
+  .title-chip {
+    font-size: clamp(13px, 2.6vw, 18px);
+    padding: 5px 12px;
+  }
+  .control-bar {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  .speed-wrap {
+    padding: 5px 10px;
+    font-size: 18px;
+    gap: 8px;
+  }
+  .speed-slider {
+    width: clamp(70px, 16vw, 140px);
+  }
+  .moon-label {
+    top: 50px;
+    font-size: clamp(14px, 3vw, 20px);
+    padding: 6px 18px;
+  }
+}

@@ -69,6 +69,18 @@ export class Controls {
     title.textContent = "Astro's Space Adventure";
     top.appendChild(title);
 
+    top.appendChild(this._button('⛶', {
+      onClick: () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().then(() => {
+            screen.orientation?.lock?.('landscape').catch(() => {});
+          }).catch(() => {});
+        } else {
+          document.exitFullscreen?.();
+        }
+      },
+    }));
+
     const bottom = this._bar('bottom');
 
     // speed control
@@ -124,8 +136,9 @@ export class Controls {
         this._toggle('💍 Rings: ON', '💍 Rings: OFF', true, (on) => this.view?.toggleRings?.(on))
       );
     }
+    const landLabel = planet.key === 'sun' ? '☀️ Visit!' : '🛬 Land!';
     bottom.appendChild(
-      this._button('🛬 Land!', { className: 'land', onClick: () => this.view?.land?.() })
+      this._button(landLabel, { className: 'land', onClick: () => this.view?.land?.() })
     );
   }
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLANETS } from '../data/planets.js';
+import { PLANETS, SUN } from '../data/planets.js';
 import { VIEW } from '../core/AppState.js';
 import { createSun } from '../objects/Sun.js';
 import { createPlanet } from '../objects/Planet.js';
@@ -9,8 +9,9 @@ import { createRocket } from '../objects/Rocket.js';
 import { createStars } from '../objects/Stars.js';
 
 // The main map: sun + orbiting planets, asteroid belt, comets and Astro's
-// rocket. Tapping a planet flies the rocket to it and zooms into Planet View.
-// Pinch (two fingers) or mouse-wheel zooms the camera in/out.
+// rocket. Tapping a planet (or the Sun) navigates to Planet View.
+// 1-finger drag: orbit-rotate camera. 2-finger pinch: zoom. 2-finger drag: pan.
+// Double-tap empty space: re-centre. Mouse wheel: zoom.
 export class SolarSystemView {
   constructor(ctx) {
     this.ctx = ctx;
@@ -30,13 +31,19 @@ export class SolarSystemView {
     // Zoom state: 1.0 = default, 0.3 = closest, 2.5 = furthest
     this._zoom = 1.0;
 
-    // Pointer tracking map: pointerId → {x, y}
-    // Used to detect single-tap vs pinch-to-zoom.
-    this._pointers = new Map();
-    this._tapStart = null; // {x, y} of the initial single-pointer down
+    // Orbit-camera state (spherical coordinates around panTarget)
+    // Initial pitch ~22° matches original camera.position(0, 45*z, 110*z)
+    this._camYaw   = 0;
+    this._camPitch = 0.388;
+    this._panTarget = new THREE.Vector3();
+
+    // Pointer tracking: pointerId → {x, y}
+    this._pointers  = new Map();
+    this._tapStart  = null; // {x, y} of initial single-pointer down
+    this._lastTapTime = 0;  // for double-tap re-centre detection
 
     this.raycaster = new THREE.Raycaster();
-    this.pointer = new THREE.Vector2();
+    this.pointer   = new THREE.Vector2();
 
     this._onPointerDown   = this._onPointerDown.bind(this);
     this._onPointerMove   = this._onPointerMove.bind(this);
@@ -57,6 +64,14 @@ export class SolarSystemView {
 
     this.sun = createSun();
     this.root.add(this.sun);
+
+    // Invisible hit-sphere for the Sun so it can be tapped.
+    this.sunHit = new THREE.Mesh(
+      new THREE.SphereGeometry(8, 16, 16),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    this.sunHit.userData.isSun = true;
+    this.root.add(this.sunHit);
 
     for (const planet of PLANETS) {
       const pivot = new THREE.Group();
@@ -92,7 +107,7 @@ export class SolarSystemView {
 
     scene.add(this.root);
 
-    this._applyZoom();
+    this._applyCamera();
 
     const dom = this.ctx.renderer.renderer.domElement;
     dom.addEventListener('pointerdown',   this._onPointerDown);
@@ -104,16 +119,21 @@ export class SolarSystemView {
     this.audio.narrate("Welcome to space! Tap a planet to fly there with Astro.");
   }
 
-  // ── camera zoom ─────────────────────────────────────────────────────────────
+  // ── camera ───────────────────────────────────────────────────────────────────
 
-  _applyZoom() {
-    this.camera.position.set(0, 45 * this._zoom, 110 * this._zoom);
-    this.camera.lookAt(0, 0, 0);
+  _applyCamera() {
+    if (this.flying) return;
+    const r = 120 * this._zoom;
+    const x = r * Math.cos(this._camPitch) * Math.sin(this._camYaw);
+    const y = r * Math.sin(this._camPitch);
+    const z = r * Math.cos(this._camPitch) * Math.cos(this._camYaw);
+    this.camera.position.copy(this._panTarget).add(new THREE.Vector3(x, y, z));
+    this.camera.lookAt(this._panTarget);
   }
 
   _adjustZoom(delta) {
     this._zoom = Math.max(0.3, Math.min(2.5, this._zoom + delta));
-    if (!this.flying) this._applyZoom();
+    this._applyCamera();
   }
 
   // ── pointer / touch event handlers ──────────────────────────────────────────
@@ -121,7 +141,6 @@ export class SolarSystemView {
   _onPointerDown(e) {
     this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this._pointers.size === 1) {
-      // Remember where this single touch started for tap detection.
       this._tapStart = { x: e.clientX, y: e.clientY };
     }
   }
@@ -130,29 +149,59 @@ export class SolarSystemView {
     if (!this._pointers.has(e.pointerId)) return;
 
     if (this._pointers.size === 2) {
-      // Pinch-to-zoom: compare old and new distances between the two pointers.
-      const ids = [...this._pointers.keys()];
-      const other = this._pointers.get(ids.find((id) => id !== e.pointerId));
-      const prev  = this._pointers.get(e.pointerId);
+      // Two-finger gesture: zoom (pinch) + pan (midpoint shift) simultaneously.
+      const ids     = [...this._pointers.keys()];
+      const otherId = ids.find((id) => id !== e.pointerId);
+      const other   = this._pointers.get(otherId);
+      const prev    = this._pointers.get(e.pointerId);
+
       const prevDist = Math.hypot(prev.x - other.x, prev.y - other.y);
+      const prevMidX = (prev.x + other.x) / 2;
+      const prevMidY = (prev.y + other.y) / 2;
 
       this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const cur = this._pointers.get(e.pointerId);
+
       const newDist = Math.hypot(cur.x - other.x, cur.y - other.y);
+      const newMidX = (cur.x + other.x) / 2;
+      const newMidY = (cur.y + other.y) / 2;
 
-      const delta = (prevDist - newDist) * 0.003; // pinch-in → zoom out
-      this._adjustZoom(delta);
+      // Zoom
+      this._adjustZoom((prevDist - newDist) * 0.003);
 
-      // Cancel any pending tap when a second finger is involved.
+      // Pan (midpoint shift → world-space translate of look-at target)
+      const dmx = newMidX - prevMidX;
+      const dmy = newMidY - prevMidY;
+      if (Math.abs(dmx) > 0.3 || Math.abs(dmy) > 0.3) {
+        const camDir = new THREE.Vector3();
+        this.camera.getWorldDirection(camDir);
+        const right = new THREE.Vector3().crossVectors(camDir, this.camera.up).negate().normalize();
+        const scale = this._zoom * 0.25;
+        this._panTarget.addScaledVector(right, dmx * scale);
+        this._panTarget.addScaledVector(this.camera.up, -dmy * scale);
+        this._panTarget.clampLength(0, 60);
+        this._applyCamera();
+      }
+
       this._tapStart = null;
     } else {
+      // Single-finger: tap detection + drag-to-rotate.
+      const prev = this._pointers.get(e.pointerId);
       this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-      // If the single pointer moved far enough, it's a drag, not a tap.
       if (this._tapStart) {
         const dx = e.clientX - this._tapStart.x;
         const dy = e.clientY - this._tapStart.y;
-        if (dx * dx + dy * dy > 64) this._tapStart = null; // 8 px threshold
+        if (dx * dx + dy * dy > 64) {
+          this._tapStart = null; // too far moved — treat as drag
+        }
+      } else if (prev) {
+        // Drag-to-rotate: orbit camera around panTarget.
+        const dx = e.clientX - prev.x;
+        const dy = e.clientY - prev.y;
+        this._camYaw   += dx * 0.005;
+        this._camPitch  = Math.max(0.05, Math.min(1.2, this._camPitch - dy * 0.005));
+        this._applyCamera();
       }
     }
   }
@@ -164,17 +213,35 @@ export class SolarSystemView {
       !this.transitioning;
 
     if (wasSingleTap) {
-      // Check if the tap hit a planet.
       const rect = this.ctx.renderer.renderer.domElement.getBoundingClientRect();
       this.pointer.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
       this.pointer.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
       this.raycaster.setFromCamera(this.pointer, this.camera);
-      const hits = this.planetPivots.map((p) => p.hit);
-      const intersects = this.raycaster.intersectObjects(hits, false);
+
+      const allHits   = [...this.planetPivots.map((p) => p.hit), this.sunHit];
+      const intersects = this.raycaster.intersectObjects(allHits, false);
+
       if (intersects.length > 0) {
-        const planet = intersects[0].object.userData.planet;
-        const entry  = this.planetPivots.find((p) => p.planet === planet);
-        this._flyTo(entry);
+        const obj = intersects[0].object;
+        if (obj.userData.isSun) {
+          this.transitioning = true;
+          this.audio.sfx('whoosh');
+          this.app.go(VIEW.PLANET, SUN);
+        } else {
+          const planet = obj.userData.planet;
+          const entry  = this.planetPivots.find((p) => p.planet === planet);
+          this._flyTo(entry);
+        }
+      } else {
+        // Double-tap on empty space → re-centre pan.
+        const now = performance.now();
+        if (now - this._lastTapTime < 400) {
+          this._panTarget.set(0, 0, 0);
+          this._applyCamera();
+          this._lastTapTime = 0;
+        } else {
+          this._lastTapTime = now;
+        }
       }
     }
 
@@ -183,12 +250,10 @@ export class SolarSystemView {
   }
 
   _onWheel(e) {
-    // Normalize across trackpad (small deltaY) vs scroll-wheel (large deltaY).
-    const delta = e.deltaY * 0.001;
-    this._adjustZoom(delta);
+    this._adjustZoom(e.deltaY * 0.001);
   }
 
-  // ── planet selection ─────────────────────────────────────────────────────────
+  // ── planet / sun selection ───────────────────────────────────────────────────
 
   _flyTo(entry) {
     if (this.transitioning) return;
