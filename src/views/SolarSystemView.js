@@ -10,6 +10,7 @@ import { createStars } from '../objects/Stars.js';
 
 // The main map: sun + orbiting planets, asteroid belt, comets and Astro's
 // rocket. Tapping a planet flies the rocket to it and zooms into Planet View.
+// Pinch (two fingers) or mouse-wheel zooms the camera in/out.
 export class SolarSystemView {
   constructor(ctx) {
     this.ctx = ctx;
@@ -19,23 +20,35 @@ export class SolarSystemView {
     this.app = ctx.app;
 
     this.root = new THREE.Group();
-    this.planetPivots = []; // { pivot, group, planet, hit, angle }
+    this.planetPivots = [];
     this.timeScale = 1.0;
     this.showAsteroids = false;
     this.showComets = false;
-    this.flying = null; // active fly-to animation
+    this.flying = null;
     this.transitioning = false;
 
-    this._onPointerDown = this._onPointerDown.bind(this);
+    // Zoom state: 1.0 = default, 0.3 = closest, 2.5 = furthest
+    this._zoom = 1.0;
+
+    // Pointer tracking map: pointerId → {x, y}
+    // Used to detect single-tap vs pinch-to-zoom.
+    this._pointers = new Map();
+    this._tapStart = null; // {x, y} of the initial single-pointer down
+
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
+
+    this._onPointerDown   = this._onPointerDown.bind(this);
+    this._onPointerMove   = this._onPointerMove.bind(this);
+    this._onPointerUp     = this._onPointerUp.bind(this);
+    this._onPointerCancel = this._onPointerUp.bind(this);
+    this._onWheel         = this._onWheel.bind(this);
   }
 
   enter() {
     const scene = this.scene;
     scene.background = new THREE.Color(0x05060f);
 
-    // lighting (sun provides a point light; add a touch of ambient)
     this.ambient = new THREE.AmbientLight(0x404060, 0.6);
     this.root.add(this.ambient);
 
@@ -45,13 +58,11 @@ export class SolarSystemView {
     this.sun = createSun();
     this.root.add(this.sun);
 
-    // planets on pivots
     for (const planet of PLANETS) {
       const pivot = new THREE.Group();
       const group = createPlanet(planet, { detail: 'low', withRings: true });
       group.position.x = planet.orbitRadius;
 
-      // oversized invisible hit-sphere so toddler taps land easily
       const hit = new THREE.Mesh(
         new THREE.SphereGeometry(Math.max(planet.radius * 2.2, 3.0), 16, 16),
         new THREE.MeshBasicMaterial({ visible: false })
@@ -61,23 +72,19 @@ export class SolarSystemView {
       pivot.add(group);
       pivot.add(hit);
 
-      // faint orbit ring
       const ring = makeOrbitRing(planet.orbitRadius);
       this.root.add(ring);
 
-      const angle = Math.random() * Math.PI * 2;
-      pivot.rotation.y = angle;
+      pivot.rotation.y = Math.random() * Math.PI * 2;
       this.root.add(pivot);
       this.planetPivots.push({ pivot, group, planet, hit });
     }
 
-    // asteroid belt + comets (created but only added when toggled on)
     this.asteroids = createAsteroidBelt();
     this.comets = new THREE.Group();
     this.comets.add(createComet({ a: 95, b: 38, speed: 0.25, phase: 0, tilt: 0.35 }));
     this.comets.add(createComet({ a: 78, b: 50, speed: 0.32, phase: 2, tilt: -0.25 }));
 
-    // rocket idles in the foreground
     this.rocket = createRocket();
     this.rocket.position.set(0, 6, 60);
     this.rocket.scale.setScalar(1.2);
@@ -85,49 +92,103 @@ export class SolarSystemView {
 
     scene.add(this.root);
 
-    // camera home position
-    this.camera.position.set(0, 45, 110);
-    this.camera.lookAt(0, 0, 0);
+    this._applyZoom();
 
-    // input
-    this.ctx.renderer.renderer.domElement.addEventListener('pointerdown', this._onPointerDown);
+    const dom = this.ctx.renderer.renderer.domElement;
+    dom.addEventListener('pointerdown',   this._onPointerDown);
+    dom.addEventListener('pointermove',   this._onPointerMove);
+    dom.addEventListener('pointerup',     this._onPointerUp);
+    dom.addEventListener('pointercancel', this._onPointerCancel);
+    dom.addEventListener('wheel',         this._onWheel, { passive: true });
 
     this.audio.narrate("Welcome to space! Tap a planet to fly there with Astro.");
   }
 
-  setTimeScale(v) {
-    this.timeScale = v;
+  // ── camera zoom ─────────────────────────────────────────────────────────────
+
+  _applyZoom() {
+    this.camera.position.set(0, 45 * this._zoom, 110 * this._zoom);
+    this.camera.lookAt(0, 0, 0);
   }
 
-  toggleAsteroids(on) {
-    this.showAsteroids = on;
-    if (on) this.root.add(this.asteroids);
-    else this.root.remove(this.asteroids);
-    this.audio.sfx('twinkle');
+  _adjustZoom(delta) {
+    this._zoom = Math.max(0.3, Math.min(2.5, this._zoom + delta));
+    if (!this.flying) this._applyZoom();
   }
 
-  toggleComets(on) {
-    this.showComets = on;
-    if (on) this.root.add(this.comets);
-    else this.root.remove(this.comets);
-    this.audio.sfx('twinkle');
-  }
+  // ── pointer / touch event handlers ──────────────────────────────────────────
 
   _onPointerDown(e) {
-    if (this.transitioning) return;
-    const rect = this.ctx.renderer.renderer.domElement.getBoundingClientRect();
-    this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-
-    const hits = this.planetPivots.map((p) => p.hit);
-    const intersects = this.raycaster.intersectObjects(hits, false);
-    if (intersects.length > 0) {
-      const planet = intersects[0].object.userData.planet;
-      const entry = this.planetPivots.find((p) => p.planet === planet);
-      this._flyTo(entry);
+    this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this._pointers.size === 1) {
+      // Remember where this single touch started for tap detection.
+      this._tapStart = { x: e.clientX, y: e.clientY };
     }
   }
+
+  _onPointerMove(e) {
+    if (!this._pointers.has(e.pointerId)) return;
+
+    if (this._pointers.size === 2) {
+      // Pinch-to-zoom: compare old and new distances between the two pointers.
+      const ids = [...this._pointers.keys()];
+      const other = this._pointers.get(ids.find((id) => id !== e.pointerId));
+      const prev  = this._pointers.get(e.pointerId);
+      const prevDist = Math.hypot(prev.x - other.x, prev.y - other.y);
+
+      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const cur = this._pointers.get(e.pointerId);
+      const newDist = Math.hypot(cur.x - other.x, cur.y - other.y);
+
+      const delta = (prevDist - newDist) * 0.003; // pinch-in → zoom out
+      this._adjustZoom(delta);
+
+      // Cancel any pending tap when a second finger is involved.
+      this._tapStart = null;
+    } else {
+      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      // If the single pointer moved far enough, it's a drag, not a tap.
+      if (this._tapStart) {
+        const dx = e.clientX - this._tapStart.x;
+        const dy = e.clientY - this._tapStart.y;
+        if (dx * dx + dy * dy > 64) this._tapStart = null; // 8 px threshold
+      }
+    }
+  }
+
+  _onPointerUp(e) {
+    const wasSingleTap =
+      this._pointers.size === 1 &&
+      this._tapStart !== null &&
+      !this.transitioning;
+
+    if (wasSingleTap) {
+      // Check if the tap hit a planet.
+      const rect = this.ctx.renderer.renderer.domElement.getBoundingClientRect();
+      this.pointer.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      this.pointer.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      const hits = this.planetPivots.map((p) => p.hit);
+      const intersects = this.raycaster.intersectObjects(hits, false);
+      if (intersects.length > 0) {
+        const planet = intersects[0].object.userData.planet;
+        const entry  = this.planetPivots.find((p) => p.planet === planet);
+        this._flyTo(entry);
+      }
+    }
+
+    this._pointers.delete(e.pointerId);
+    if (this._pointers.size === 0) this._tapStart = null;
+  }
+
+  _onWheel(e) {
+    // Normalize across trackpad (small deltaY) vs scroll-wheel (large deltaY).
+    const delta = e.deltaY * 0.001;
+    this._adjustZoom(delta);
+  }
+
+  // ── planet selection ─────────────────────────────────────────────────────────
 
   _flyTo(entry) {
     if (this.transitioning) return;
@@ -135,7 +196,6 @@ export class SolarSystemView {
     this.audio.sfx('whoosh');
     this.audio.narrate(entry.planet.narration.name);
 
-    // world position of the planet right now
     const target = new THREE.Vector3();
     entry.group.getWorldPosition(target);
 
@@ -148,6 +208,24 @@ export class SolarSystemView {
     };
   }
 
+  // ── controls ──────────────────────────────────────────────────────────────────
+
+  setTimeScale(v) { this.timeScale = v; }
+
+  toggleAsteroids(on) {
+    this.showAsteroids = on;
+    if (on) this.root.add(this.asteroids); else this.root.remove(this.asteroids);
+    this.audio.sfx('twinkle');
+  }
+
+  toggleComets(on) {
+    this.showComets = on;
+    if (on) this.root.add(this.comets); else this.root.remove(this.comets);
+    this.audio.sfx('twinkle');
+  }
+
+  // ── update loop ───────────────────────────────────────────────────────────────
+
   update(dt, t) {
     const scaled = dt * this.timeScale;
 
@@ -157,32 +235,27 @@ export class SolarSystemView {
     for (const { pivot, group, planet } of this.planetPivots) {
       pivot.rotation.y += scaled * planet.orbitSpeed * 0.15;
       if (group.userData.spin) group.userData.spin(scaled);
-      // keep hit sphere aligned with planet (pivot rotates both, so fine)
     }
 
-    if (this.showAsteroids && this.asteroids.userData.update) {
+    if (this.showAsteroids && this.asteroids.userData.update)
       this.asteroids.userData.update(scaled);
-    }
-    if (this.showComets) {
+
+    if (this.showComets)
       this.comets.children.forEach((c) => c.userData.update && c.userData.update(scaled));
-    }
 
     if (this.rocket.userData.animateFlame) this.rocket.userData.animateFlame(t);
 
-    // fly-to animation
     if (this.flying) {
       const f = this.flying;
       f.t += dt;
       const k = Math.min(1, f.t / f.dur);
-      const e = easeInOut(k);
+      const ease = easeInOut(k);
 
-      // arc the rocket up and over toward the planet
-      const pos = f.from.clone().lerp(f.to, e);
-      pos.y += Math.sin(e * Math.PI) * 12;
+      const pos = f.from.clone().lerp(f.to, ease);
+      pos.y += Math.sin(ease * Math.PI) * 12;
       this.rocket.position.copy(pos);
       this.rocket.lookAt(f.to);
 
-      // camera eases toward the planet too
       const camTarget = f.to.clone().add(new THREE.Vector3(0, 6, 18));
       this.camera.position.lerp(camTarget, 0.04);
       this.camera.lookAt(f.to);
@@ -193,13 +266,17 @@ export class SolarSystemView {
         this.app.go(VIEW.PLANET, planet);
       }
     } else if (!this.transitioning) {
-      // idle bob
       this.rocket.position.y = 6 + Math.sin(t * 1.5) * 0.6;
     }
   }
 
   dispose() {
-    this.ctx.renderer.renderer.domElement.removeEventListener('pointerdown', this._onPointerDown);
+    const dom = this.ctx.renderer.renderer.domElement;
+    dom.removeEventListener('pointerdown',   this._onPointerDown);
+    dom.removeEventListener('pointermove',   this._onPointerMove);
+    dom.removeEventListener('pointerup',     this._onPointerUp);
+    dom.removeEventListener('pointercancel', this._onPointerCancel);
+    dom.removeEventListener('wheel',         this._onWheel);
     this.scene.remove(this.root);
     disposeGroup(this.root);
   }
@@ -222,8 +299,7 @@ export function disposeGroup(group) {
     if (obj.geometry) obj.geometry.dispose();
     if (obj.material) {
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      // NOTE: we intentionally do NOT dispose `.map` textures here — planet
-      // textures are cached and shared across views (see utils/textures.js).
+      // Do NOT dispose .map — planet textures are cached in utils/textures.js.
       mats.forEach((m) => m.dispose());
     }
   });
