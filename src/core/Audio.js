@@ -105,52 +105,55 @@ export class Audio {
     }
   }
 
-  // Dreamy ambient space-music pad: two detuned sine oscillators + a slow LFO
-  // for gentle tremolo, running quietly in the background.
+  // Dreamy ambient space-music pad: three pure sine oscillators softly detuned.
+  // No LFO — previously an LFO AudioNode was wired to the same AudioParam that
+  // also had linearRampToValueAtTime automation scheduled on it, which caused an
+  // audible buzz/click (undefined behaviour per the Web Audio spec). Fixed by
+  // using only scheduled automation on the gain param, no live AudioNode modulation.
   _startMusic() {
     if (!this.ctx) return;
     const ctx = this.ctx;
     if (ctx.state === 'suspended') ctx.resume();
 
+    // Master gain: fade in over 5 s, nothing else touches this AudioParam.
     const masterGain = ctx.createGain();
-    masterGain.gain.value = 0;
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.09, ctx.currentTime + 5);
     masterGain.connect(ctx.destination);
 
-    // Fade in gently.
-    masterGain.gain.linearRampToValueAtTime(0.10, ctx.currentTime + 4);
+    // Oscillator output gain (static) — the oscillators connect here, not to masterGain,
+    // so the fade-in ramp on masterGain.gain is the only thing that ever touches it.
+    const oscGain = ctx.createGain();
+    oscGain.gain.value = 1.0;
+    oscGain.connect(masterGain);
 
-    // Two oscillators a fifth apart, slightly detuned for a warm chorus effect.
-    const freqs = [130.81, 196.0]; // C3, G3
-    const osc = freqs.map((f, i) => {
+    // Two sine waves a perfect fifth apart, barely detuned for a gentle chorus.
+    const specs = [
+      { freq: 130.81, detune: -2 }, // C3
+      { freq: 196.00, detune:  3 }, // G3
+    ];
+    const osc = specs.map(({ freq, detune }) => {
       const o = ctx.createOscillator();
       o.type = 'sine';
-      o.frequency.value = f;
-      o.detune.value = i === 0 ? -4 : 6;
+      o.frequency.value = freq;
+      o.detune.value = detune;
+      o.connect(oscGain);
       return o;
     });
 
-    // A third oscillator an octave up, quieter, for shimmer.
+    // A quiet shimmer an octave up — sine only (no harmonics = no buzz).
     const shimmer = ctx.createOscillator();
-    shimmer.type = 'triangle';
+    shimmer.type = 'sine';
     shimmer.frequency.value = 261.63; // C4
-    shimmer.detune.value = 8;
-
+    shimmer.detune.value = 5;
     const shimmerGain = ctx.createGain();
-    shimmerGain.gain.value = 0.3;
+    shimmerGain.gain.value = 0.22;
+    shimmer.connect(shimmerGain).connect(oscGain);
 
-    // Slow tremolo LFO (0.18 Hz).
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 0.18;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 0.025;
-    lfo.connect(lfoGain).connect(masterGain.gain);
+    osc.forEach((o) => o.start());
+    shimmer.start();
 
-    osc.forEach((o) => o.connect(masterGain));
-    shimmer.connect(shimmerGain).connect(masterGain);
-    [lfo, ...osc, shimmer].forEach((o) => o.start());
-
-    this._musicNode = { masterGain, osc, shimmer, lfo };
+    this._musicNode = { masterGain, oscGain, osc, shimmer, shimmerGain };
   }
 
   _tone(f0, f1, dur, type, start, gainPeak) {

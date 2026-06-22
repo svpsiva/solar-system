@@ -12,6 +12,15 @@ function begin() {
   app.audio.init();
   startScreen.classList.add('hidden');
   app.start();
+
+  // Show a pinch-to-zoom hint on touch-capable devices, then fade it out.
+  if (navigator.maxTouchPoints > 0) {
+    const hint = document.getElementById('zoom-hint');
+    if (hint) {
+      hint.style.display = 'block';
+      setTimeout(() => hint.classList.add('hidden'), 3500);
+    }
+  }
 }
 
 startButton.addEventListener('click', begin, { once: true });

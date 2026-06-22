@@ -164,14 +164,19 @@ export const PLANETS = [
     ringColor: 0xd9c89a,
     ringTextureUrl: `${CDN}2k_saturn_ring_alpha.png`,
     moons: [
-      { name: 'Titan', radius: 0.55, orbitRadius: 6.5, speed: 1.1, color: 0xd8a85a },
-      { name: 'Rhea', radius: 0.35, orbitRadius: 8.2, speed: 0.85, color: 0xc8c0b0 },
+      { name: 'Mimas',      radius: 0.20, orbitRadius: 5.2,  speed: 1.80, color: 0xd0ccc8 },
+      { name: 'Enceladus',  radius: 0.22, orbitRadius: 6.0,  speed: 1.55, color: 0xeeeeff },
+      { name: 'Tethys',     radius: 0.26, orbitRadius: 6.9,  speed: 1.35, color: 0xd8d4cc },
+      { name: 'Dione',      radius: 0.27, orbitRadius: 7.8,  speed: 1.15, color: 0xccc8c0 },
+      { name: 'Rhea',       radius: 0.32, orbitRadius: 8.8,  speed: 0.95, color: 0xc8c0b0 },
+      { name: 'Titan',      radius: 0.55, orbitRadius: 10.2, speed: 0.75, color: 0xd8a85a },
+      { name: 'Iapetus',    radius: 0.28, orbitRadius: 12.0, speed: 0.50, color: 0xa09080 },
     ],
     surfaceType: 'gas',
     surface: { groundColor: 0xd9c89a, skyColor: 0x4a3a20, roughness: 0.5 },
     narration: {
       name: 'Saturn!',
-      fact: 'Saturn has beautiful rings made of billions of pieces of ice and rock!',
+      fact: 'Saturn has beautiful rings made of billions of pieces of ice and rock, and seven big moons!',
     },
   },
   {
@@ -187,12 +192,18 @@ export const PLANETS = [
     textureUrl: `${CDN}2k_uranus.jpg`,
     hasRings: true,
     ringColor: 0x9fdfe0,
-    moons: [{ name: 'Titania', radius: 0.4, orbitRadius: 5.0, speed: 1.0, color: 0xbfcfd0 }],
+    moons: [
+      { name: 'Miranda',  radius: 0.20, orbitRadius: 4.0, speed: 1.60, color: 0xb0b8bc },
+      { name: 'Ariel',    radius: 0.28, orbitRadius: 5.0, speed: 1.30, color: 0xc0c8cc },
+      { name: 'Umbriel',  radius: 0.27, orbitRadius: 6.1, speed: 1.05, color: 0x808890 },
+      { name: 'Titania',  radius: 0.35, orbitRadius: 7.4, speed: 0.82, color: 0xbfcfd0 },
+      { name: 'Oberon',   radius: 0.33, orbitRadius: 8.8, speed: 0.64, color: 0xa8b0b8 },
+    ],
     surfaceType: 'gas',
     surface: { groundColor: 0x7ec8c9, skyColor: 0x1a4a4a, roughness: 0.5 },
     narration: {
       name: 'Uranus!',
-      fact: 'Uranus is a cold, icy blue planet that spins on its side — it is very unusual!',
+      fact: 'Uranus is a cold, icy blue planet that spins on its side! It has five big moons.',
     },
   },
   {
@@ -207,7 +218,10 @@ export const PLANETS = [
     textureType: 'ice',
     textureUrl: `${CDN}2k_neptune.jpg`,
     hasRings: false,
-    moons: [{ name: 'Triton', radius: 0.42, orbitRadius: 5.2, speed: 0.9, color: 0xbcd0e0 }],
+    moons: [
+      { name: 'Triton', radius: 0.42, orbitRadius: 5.2, speed: 0.90, color: 0xbcd0e0 },
+      { name: 'Nereid', radius: 0.18, orbitRadius: 7.8, speed: 0.45, color: 0x9090a8 },
+    ],
     surfaceType: 'gas',
     surface: { groundColor: 0x2a4fb0, skyColor: 0x0a1a3a, roughness: 0.5 },
     narration: {
