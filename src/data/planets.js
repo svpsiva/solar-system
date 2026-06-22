@@ -4,8 +4,9 @@
 // Distances/sizes are NOT to real scale — they are tuned so a toddler can see
 // and tap everything easily.
 //
-// textureUrl: free CC-BY 4.0 maps from solarsystemscope.com. The texture
-// loader falls back to procedural generation if the URL fails to load.
+// textureUrl: local texture files bundled in public/textures/ (sourced from
+// jeromeetienne/threex.planets and three.js examples — public domain / CC).
+// The loader falls back to procedural generation if a file is missing.
 //
 // surfaceType drives which surface builder is used in Terrain.js:
 //   'gas'      Jupiter, Saturn, Uranus, Neptune — animated cloud layers
@@ -14,7 +15,8 @@
 //   'desert'   Mars, Mercury — dusty plains with rocks
 //   'icy'      Moon — grey craters, black sky
 
-const CDN = 'https://www.solarsystemscope.com/textures/download/';
+// Local texture base path (files live in public/textures/, served at /textures/).
+const T = './textures/';
 
 export const SUN = {
   key: 'sun',
@@ -22,7 +24,7 @@ export const SUN = {
   radius: 6,
   color: 0xffcc33,
   emissive: 0xff8800,
-  textureUrl: `${CDN}2k_sun.jpg`,
+  textureUrl: `${T}sun.jpg`,
   narration: {
     name: 'The Sun!',
     fact: 'The Sun is a giant ball of fire. It keeps all the planets warm and bright!',
@@ -42,7 +44,7 @@ export const PLANETS = [
     orbitSpeed: 1.6,
     rotationSpeed: 0.4,
     textureType: 'rocky',
-    textureUrl: `${CDN}2k_mercury.jpg`,
+    textureUrl: `${T}mercury.jpg`,
     hasRings: false,
     moons: [],
     surfaceType: 'icy',
@@ -62,7 +64,7 @@ export const PLANETS = [
     orbitSpeed: 1.2,
     rotationSpeed: 0.3,
     textureType: 'cloudy',
-    textureUrl: `${CDN}2k_venus_atmosphere.jpg`,
+    textureUrl: `${T}venus.jpg`,
     hasRings: false,
     moons: [],
     surfaceType: 'volcanic',
@@ -82,7 +84,7 @@ export const PLANETS = [
     orbitSpeed: 1.0,
     rotationSpeed: 0.5,
     textureType: 'earth',
-    textureUrl: `${CDN}2k_earth_daymap.jpg`,
+    textureUrl: `${T}earth.jpg`,
     hasRings: false,
     moons: [
       {
@@ -91,7 +93,7 @@ export const PLANETS = [
         orbitRadius: 3.2,
         speed: 1.4,
         color: 0xcccccc,
-        textureUrl: `${CDN}2k_moon.jpg`,
+        textureUrl: `${T}moon.jpg`,
       },
     ],
     surfaceType: 'earth',
@@ -111,7 +113,7 @@ export const PLANETS = [
     orbitSpeed: 0.8,
     rotationSpeed: 0.48,
     textureType: 'rocky',
-    textureUrl: `${CDN}2k_mars.jpg`,
+    textureUrl: `${T}mars.jpg`,
     hasRings: false,
     moons: [
       { name: 'Phobos', radius: 0.25, orbitRadius: 2.4, speed: 1.8, color: 0x9a8a7a },
@@ -134,7 +136,7 @@ export const PLANETS = [
     orbitSpeed: 0.45,
     rotationSpeed: 0.7,
     textureType: 'gas',
-    textureUrl: `${CDN}2k_jupiter.jpg`,
+    textureUrl: `${T}jupiter.jpg`,
     hasRings: false,
     moons: [
       { name: 'Io', radius: 0.4, orbitRadius: 5.2, speed: 1.6, color: 0xe8d27a },
@@ -159,10 +161,10 @@ export const PLANETS = [
     orbitSpeed: 0.35,
     rotationSpeed: 0.65,
     textureType: 'gas',
-    textureUrl: `${CDN}2k_saturn.jpg`,
+    textureUrl: `${T}saturn.jpg`,
     hasRings: true,
     ringColor: 0xd9c89a,
-    ringTextureUrl: `${CDN}2k_saturn_ring_alpha.png`,
+    ringTextureUrl: `${T}saturn_ring.jpg`,
     moons: [
       { name: 'Mimas',      radius: 0.20, orbitRadius: 5.2,  speed: 1.80, color: 0xd0ccc8 },
       { name: 'Enceladus',  radius: 0.22, orbitRadius: 6.0,  speed: 1.55, color: 0xeeeeff },
@@ -189,7 +191,7 @@ export const PLANETS = [
     orbitSpeed: 0.28,
     rotationSpeed: 0.55,
     textureType: 'ice',
-    textureUrl: `${CDN}2k_uranus.jpg`,
+    textureUrl: `${T}uranus.jpg`,
     hasRings: true,
     ringColor: 0x9fdfe0,
     moons: [
@@ -216,7 +218,7 @@ export const PLANETS = [
     orbitSpeed: 0.22,
     rotationSpeed: 0.55,
     textureType: 'ice',
-    textureUrl: `${CDN}2k_neptune.jpg`,
+    textureUrl: `${T}neptune.jpg`,
     hasRings: false,
     moons: [
       { name: 'Triton', radius: 0.42, orbitRadius: 5.2, speed: 0.90, color: 0xbcd0e0 },
