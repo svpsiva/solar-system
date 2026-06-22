@@ -2,7 +2,19 @@
 // Consumed by SolarSystemView, PlanetView and SurfaceView.
 //
 // Distances/sizes are NOT to real scale — they are tuned so a toddler can see
-// and tap everything easily. Narration is written in simple, friendly language.
+// and tap everything easily.
+//
+// textureUrl: free CC-BY 4.0 maps from solarsystemscope.com. The texture
+// loader falls back to procedural generation if the URL fails to load.
+//
+// surfaceType drives which surface builder is used in Terrain.js:
+//   'gas'      Jupiter, Saturn, Uranus, Neptune — animated cloud layers
+//   'volcanic' Venus — lava cracks, orange fog
+//   'earth'    Earth — ocean + hills + cloud sprites
+//   'desert'   Mars, Mercury — dusty plains with rocks
+//   'icy'      Moon — grey craters, black sky
+
+const CDN = 'https://www.solarsystemscope.com/textures/download/';
 
 export const SUN = {
   key: 'sun',
@@ -10,11 +22,13 @@ export const SUN = {
   radius: 6,
   color: 0xffcc33,
   emissive: 0xff8800,
+  textureUrl: `${CDN}2k_sun.jpg`,
   narration: {
     name: 'The Sun!',
     fact: 'The Sun is a giant ball of fire. It keeps all the planets warm and bright!',
   },
   surface: { groundColor: 0xff7722, skyColor: 0xffaa33, roughness: 0.9 },
+  surfaceType: 'volcanic',
 };
 
 export const PLANETS = [
@@ -28,9 +42,11 @@ export const PLANETS = [
     orbitSpeed: 1.6,
     rotationSpeed: 0.4,
     textureType: 'rocky',
+    textureUrl: `${CDN}2k_mercury.jpg`,
     hasRings: false,
     moons: [],
-    surface: { groundColor: 0x9c948a, skyColor: 0x1a1a1a, roughness: 1.0 },
+    surfaceType: 'icy',
+    surface: { groundColor: 0x7a7570, skyColor: 0x080808, roughness: 1.0 },
     narration: {
       name: 'Mercury!',
       fact: 'Mercury is the smallest planet and it zooms around the Sun the fastest!',
@@ -46,12 +62,14 @@ export const PLANETS = [
     orbitSpeed: 1.2,
     rotationSpeed: 0.3,
     textureType: 'cloudy',
+    textureUrl: `${CDN}2k_venus_atmosphere.jpg`,
     hasRings: false,
     moons: [],
-    surface: { groundColor: 0xd99a4a, skyColor: 0xe0a85c, roughness: 0.8 },
+    surfaceType: 'volcanic',
+    surface: { groundColor: 0x8a4a20, skyColor: 0xc8601a, roughness: 0.9 },
     narration: {
       name: 'Venus!',
-      fact: 'Venus is covered in yellow clouds and is the hottest planet of all!',
+      fact: 'Venus is covered in thick yellow clouds and is the hottest planet of all!',
     },
   },
   {
@@ -64,12 +82,23 @@ export const PLANETS = [
     orbitSpeed: 1.0,
     rotationSpeed: 0.5,
     textureType: 'earth',
+    textureUrl: `${CDN}2k_earth_daymap.jpg`,
     hasRings: false,
-    moons: [{ name: 'The Moon', radius: 0.45, orbitRadius: 3.2, speed: 1.4, color: 0xcccccc }],
-    surface: { groundColor: 0x4a9e4a, skyColor: 0x88bbff, roughness: 0.7 },
+    moons: [
+      {
+        name: 'The Moon',
+        radius: 0.45,
+        orbitRadius: 3.2,
+        speed: 1.4,
+        color: 0xcccccc,
+        textureUrl: `${CDN}2k_moon.jpg`,
+      },
+    ],
+    surfaceType: 'earth',
+    surface: { groundColor: 0x4a9e4a, skyColor: 0x70b0ff, roughness: 0.7 },
     narration: {
       name: 'Earth!',
-      fact: 'Earth is our home! It has blue oceans, green land, and one big Moon.',
+      fact: 'Earth is our home! It has blue oceans, green forests, and one big Moon.',
     },
   },
   {
@@ -82,12 +111,14 @@ export const PLANETS = [
     orbitSpeed: 0.8,
     rotationSpeed: 0.48,
     textureType: 'rocky',
+    textureUrl: `${CDN}2k_mars.jpg`,
     hasRings: false,
     moons: [
       { name: 'Phobos', radius: 0.25, orbitRadius: 2.4, speed: 1.8, color: 0x9a8a7a },
       { name: 'Deimos', radius: 0.2, orbitRadius: 3.4, speed: 1.2, color: 0x8a7a6a },
     ],
-    surface: { groundColor: 0xb24a2a, skyColor: 0xd9a07a, roughness: 0.95 },
+    surfaceType: 'desert',
+    surface: { groundColor: 0xb24a2a, skyColor: 0xc8906a, roughness: 0.95 },
     narration: {
       name: 'Mars!',
       fact: 'Mars is the red planet! It is dusty and rocky, with two tiny moons.',
@@ -103,6 +134,7 @@ export const PLANETS = [
     orbitSpeed: 0.45,
     rotationSpeed: 0.7,
     textureType: 'gas',
+    textureUrl: `${CDN}2k_jupiter.jpg`,
     hasRings: false,
     moons: [
       { name: 'Io', radius: 0.4, orbitRadius: 5.2, speed: 1.6, color: 0xe8d27a },
@@ -110,10 +142,11 @@ export const PLANETS = [
       { name: 'Ganymede', radius: 0.5, orbitRadius: 7.8, speed: 1.0, color: 0xa89a86 },
       { name: 'Callisto', radius: 0.46, orbitRadius: 9.2, speed: 0.8, color: 0x8a7a6a },
     ],
-    surface: { groundColor: 0xc79a6a, skyColor: 0xd8b48a, roughness: 0.6 },
+    surfaceType: 'gas',
+    surface: { groundColor: 0xc79a6a, skyColor: 0x5a3a1a, roughness: 0.5 },
     narration: {
       name: 'Jupiter!',
-      fact: 'Jupiter is the biggest planet! It has a giant red storm and many moons.',
+      fact: 'Jupiter is the biggest planet! It has a giant red storm that has been spinning for hundreds of years.',
     },
   },
   {
@@ -126,16 +159,19 @@ export const PLANETS = [
     orbitSpeed: 0.35,
     rotationSpeed: 0.65,
     textureType: 'gas',
+    textureUrl: `${CDN}2k_saturn.jpg`,
     hasRings: true,
     ringColor: 0xd9c89a,
+    ringTextureUrl: `${CDN}2k_saturn_ring_alpha.png`,
     moons: [
       { name: 'Titan', radius: 0.55, orbitRadius: 6.5, speed: 1.1, color: 0xd8a85a },
       { name: 'Rhea', radius: 0.35, orbitRadius: 8.2, speed: 0.85, color: 0xc8c0b0 },
     ],
-    surface: { groundColor: 0xd9c89a, skyColor: 0xe6d3a3, roughness: 0.6 },
+    surfaceType: 'gas',
+    surface: { groundColor: 0xd9c89a, skyColor: 0x4a3a20, roughness: 0.5 },
     narration: {
       name: 'Saturn!',
-      fact: 'Saturn has beautiful rings made of ice and rock that go all around it!',
+      fact: 'Saturn has beautiful rings made of billions of pieces of ice and rock!',
     },
   },
   {
@@ -148,13 +184,15 @@ export const PLANETS = [
     orbitSpeed: 0.28,
     rotationSpeed: 0.55,
     textureType: 'ice',
+    textureUrl: `${CDN}2k_uranus.jpg`,
     hasRings: true,
     ringColor: 0x9fdfe0,
     moons: [{ name: 'Titania', radius: 0.4, orbitRadius: 5.0, speed: 1.0, color: 0xbfcfd0 }],
-    surface: { groundColor: 0x7ec8c9, skyColor: 0x9fdfe0, roughness: 0.5 },
+    surfaceType: 'gas',
+    surface: { groundColor: 0x7ec8c9, skyColor: 0x1a4a4a, roughness: 0.5 },
     narration: {
       name: 'Uranus!',
-      fact: 'Uranus is a cold, icy blue planet that spins on its side!',
+      fact: 'Uranus is a cold, icy blue planet that spins on its side — it is very unusual!',
     },
   },
   {
@@ -167,17 +205,18 @@ export const PLANETS = [
     orbitSpeed: 0.22,
     rotationSpeed: 0.55,
     textureType: 'ice',
+    textureUrl: `${CDN}2k_neptune.jpg`,
     hasRings: false,
     moons: [{ name: 'Triton', radius: 0.42, orbitRadius: 5.2, speed: 0.9, color: 0xbcd0e0 }],
-    surface: { groundColor: 0x2a4fb0, skyColor: 0x3b6fd6, roughness: 0.5 },
+    surfaceType: 'gas',
+    surface: { groundColor: 0x2a4fb0, skyColor: 0x0a1a3a, roughness: 0.5 },
     narration: {
       name: 'Neptune!',
-      fact: 'Neptune is a deep blue planet far, far away. It is very windy there!',
+      fact: 'Neptune is the furthest planet. It has the fastest winds in the whole solar system!',
     },
   },
 ];
 
-// Quick lookup by key (includes the Sun).
 export const BODIES_BY_KEY = Object.fromEntries(
   [SUN, ...PLANETS].map((b) => [b.key, b])
 );
