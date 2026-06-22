@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Astro's Space Adventure 🚀</title>
+    <link rel="stylesheet" href="./styles/style.css" />
+  </head>
+  <body>
+    <!-- 3D canvas -->
+    <canvas id="scene"></canvas>
+
+    <!-- HTML UI overlay (big toddler buttons live here) -->
+    <div id="ui"></div>
+
+    <!-- Start screen: needed so the browser lets us start audio on first tap -->
+    <div id="start-screen">
+      <div class="start-card">
+        <div class="start-rocket">🚀</div>
+        <h1>Astro's Space Adventure</h1>
+        <p>Fly with Astro the astronaut to explore the planets!</p>
+        <button id="start-button">Let's Go! 🌟</button>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
