@@ -1,16 +1,26 @@
 import * as THREE from 'three';
+import { getMoonTexture } from '../utils/textures.js';
+import { subscribeRemoteTexture } from '../utils/textures.js';
 
-// Small grey/colored moon that orbits a parent on its own pivot.
+// Small textured moon that orbits a parent on its own pivot.
 // Returns { pivot, update(dt, scale) }. Add `pivot` to the planet group.
 export function createMoon(moon, startAngle = 0) {
   const pivot = new THREE.Group();
 
   const geo = new THREE.SphereGeometry(moon.radius, 24, 24);
+  const procTex = getMoonTexture(moon);
   const mat = new THREE.MeshStandardMaterial({
-    color: moon.color || 0xcccccc,
+    color: 0xffffff,
+    map: procTex,
     roughness: 1.0,
     metalness: 0.0,
   });
+  if (moon.textureUrl) {
+    subscribeRemoteTexture(moon.textureUrl, (tex) => {
+      mat.map = tex;
+      mat.needsUpdate = true;
+    });
+  }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.x = moon.orbitRadius;
   mesh.userData.moonName = moon.name;

@@ -57,6 +57,11 @@ export class SurfaceView {
       this.scene.fog = this._surface.userData.fog;
     }
 
+    // Sun disc in the sky — skipped for gas planets and the Sun itself.
+    if (this.planet.surfaceType !== 'gas' && this.planet.key !== 'sun') {
+      this._addSkySun(this.planet);
+    }
+
     // Stars — skipped for Venus (thick clouds block them) and Earth (daytime).
     if (!['venus', 'earth'].includes(this.planet.key)) {
       this.stars = createStars(800, 350);
@@ -155,7 +160,38 @@ export class SurfaceView {
     }
   }
 
+  _addSkySun(planet) {
+    const scale = planet.surface?.sunScale ?? 1.0;
+    const size  = 7 * scale;
+
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0,    'rgba(255,255,220,1)');
+    g.addColorStop(0.25, 'rgba(255,240,160,0.9)');
+    g.addColorStop(0.55, 'rgba(255,200,80,0.4)');
+    g.addColorStop(1,    'rgba(255,180,60,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }));
+    sprite.scale.set(size, size, 1);
+    sprite.position.set(60, 55, -100);
+    this.scene.add(sprite);
+    this._sunSprite = sprite;
+  }
+
   dispose() {
+    this._sunSprite?.removeFromParent();
+    this._sunSprite = null;
+
     // Clear fog when leaving surface view.
     this.scene.fog = null;
 
