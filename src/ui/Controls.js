@@ -55,11 +55,8 @@ export class Controls {
     return btn;
   }
 
-  _backToSpace() {
-    return this._button('🚀 Back to Space', {
-      className: 'back',
-      onClick: () => this.app.go(VIEW.SOLAR),
-    });
+  _homeBtn() {
+    return this._button('🏠', { className: 'home', onClick: () => this.app.go(VIEW.SOLAR) });
   }
 
   _bar(position) {
@@ -67,6 +64,22 @@ export class Controls {
     bar.className = `control-bar ${position}`;
     this.root.appendChild(bar);
     return bar;
+  }
+
+  _bottomBar(leftItems = [], centerText = '', rightItems = []) {
+    const bar = this._bar('bottom');
+    const left = document.createElement('div'); left.className = 'bar-left';
+    const center = document.createElement('div'); center.className = 'bar-center';
+    const right = document.createElement('div'); right.className = 'bar-right';
+    leftItems.forEach((el) => left.appendChild(el));
+    if (centerText) {
+      const chip = document.createElement('div');
+      chip.className = 'title-chip';
+      chip.textContent = centerText;
+      center.appendChild(chip);
+    }
+    rightItems.forEach((el) => right.appendChild(el));
+    bar.append(left, center, right);
   }
 
   // ---- mute toggle -----------------------------------------------------
@@ -118,11 +131,6 @@ export class Controls {
     const top = this._bar('top');
     top.appendChild(this._button('🗺️ 2D Map', { onClick: () => this.app.go(VIEW.SOLAR_2D) }));
     top.appendChild(this._button('🌌 Galaxy', { onClick: () => this.app.go(VIEW.GALAXY) }));
-    top.appendChild(this._muteBtn());
-    const fsBtn = this._fullscreenBtn();
-    if (fsBtn) top.appendChild(fsBtn);
-
-    const bottom = this._bar('bottom');
 
     const speedWrap = document.createElement('div');
     speedWrap.className = 'speed-wrap';
@@ -146,80 +154,63 @@ export class Controls {
       this.view?.toggleComets?.(on)
     );
 
-    bottom.append(speedWrap, pause, asteroids, comets);
+    top.append(speedWrap, pause, asteroids, comets);
+    top.appendChild(this._muteBtn());
+    const fsBtn = this._fullscreenBtn();
+    if (fsBtn) top.appendChild(fsBtn);
   }
 
   _renderGalaxy() {
     const top = this._bar('top');
-    const title = document.createElement('div');
-    title.className = 'title-chip';
-    title.textContent = 'Milky Way Galaxy';
-    top.appendChild(title);
-    top.appendChild(this._button('🚀 Back to Space', {
-      className: 'back',
-      onClick: () => this.app.go(VIEW.SOLAR),
-    }));
     top.appendChild(this._muteBtn());
     const fsBtn = this._fullscreenBtn();
     if (fsBtn) top.appendChild(fsBtn);
+
+    this._bottomBar([], 'Milky Way Galaxy', [this._homeBtn()]);
   }
 
   _renderSolar2D() {
     const top = this._bar('top');
-    const title = document.createElement('div');
-    title.className = 'title-chip';
-    title.textContent = 'Solar System';
-    top.appendChild(title);
     top.appendChild(this._button('🌌 3D View', { onClick: () => this.app.go(VIEW.SOLAR) }));
     top.appendChild(this._muteBtn());
     const fsBtn = this._fullscreenBtn();
     if (fsBtn) top.appendChild(fsBtn);
+
+    this._bottomBar([], 'Solar System', [this._homeBtn()]);
   }
 
   _renderPlanet(planet) {
     const top = this._bar('top');
-    const name = document.createElement('div');
-    name.className = 'title-chip';
-    name.textContent = planet.name;
-    top.appendChild(name);
-    top.appendChild(this._backToSpace());
-    top.appendChild(this._muteBtn());
-
-    const bottom = this._bar('bottom');
-
     if (planet.moons && planet.moons.length) {
-      bottom.appendChild(
+      top.appendChild(
         this._toggle('🌙 Moons: ON', '🌙 Moons: OFF', true, (on) => this.view?.toggleMoons?.(on))
       );
     }
     if (planet.hasRings) {
-      bottom.appendChild(
+      top.appendChild(
         this._toggle('💍 Rings: ON', '💍 Rings: OFF', true, (on) => this.view?.toggleRings?.(on))
       );
     }
+    top.appendChild(this._muteBtn());
+
+    const rightItems = [];
     if (planet.surfaceType !== 'gas') {
       const landLabel = planet.key === 'sun' ? '☀️ Visit!' : '🛬 Land!';
-      bottom.appendChild(
-        this._button(landLabel, { className: 'land', onClick: () => this.view?.land?.() })
-      );
+      rightItems.push(this._button(landLabel, { className: 'land', onClick: () => this.view?.land?.() }));
     }
+    rightItems.push(this._homeBtn());
+
+    this._bottomBar([], planet.name, rightItems);
   }
 
   _renderSurface(planet) {
     const top = this._bar('top');
-    const name = document.createElement('div');
-    name.className = 'title-chip';
-    name.textContent = `On ${planet.name}`;
-    top.appendChild(name);
     top.appendChild(this._muteBtn());
 
-    const bottom = this._bar('bottom');
-    bottom.appendChild(
-      this._button('🪐 Back to Planet', {
-        className: 'back',
-        onClick: () => this.app.go(VIEW.PLANET, planet),
-      })
-    );
-    bottom.appendChild(this._backToSpace());
+    const backBtn = this._button('🪐 Back to Planet', {
+      className: 'back',
+      onClick: () => this.app.go(VIEW.PLANET, planet),
+    });
+    this._bottomBar([backBtn], `On ${planet.name}`, [this._homeBtn()]);
   }
 }
