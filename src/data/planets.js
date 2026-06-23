@@ -98,7 +98,7 @@ export const PLANETS = [
       },
     ],
     surfaceType: 'earth',
-    surface: { groundColor: 0x4a9e4a, skyColor: 0x70b0ff, roughness: 0.7, sunScale: 1.0, panoramaUrl: `${T}earth_panorama.jpg` },
+    surface: { groundColor: 0x4a9e4a, skyColor: 0x70b0ff, roughness: 0.7, sunScale: 1.0 },
     narration: {
       name: 'Earth!',
       fact: 'Earth is our home! It has blue oceans, green forests, and one big Moon.',
@@ -121,7 +121,7 @@ export const PLANETS = [
       { name: 'Deimos', radius: 0.2, orbitRadius: 3.4, speed: 1.2, color: 0x8a7a6a, textureType: 'rocky' },
     ],
     surfaceType: 'desert',
-    surface: { groundColor: 0xb24a2a, skyColor: 0xc8906a, roughness: 0.95, sunScale: 0.65, panoramaUrl: `${T}mars_panorama.jpg` },
+    surface: { groundColor: 0xb24a2a, skyColor: 0xc8906a, roughness: 0.95, sunScale: 0.65 },
     narration: {
       name: 'Mars!',
       fact: 'Mars is the red planet! It is dusty and rocky, with two tiny moons.',

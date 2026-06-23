@@ -69,8 +69,19 @@ export class Controls {
     return bar;
   }
 
+  // ---- mute toggle -----------------------------------------------------
+  _muteBtn() {
+    return this._toggle('🔇 Mute', '🔊 Sound', false, (muted) => {
+      if (muted) this.app.audio.mute();
+      else this.app.audio.unmute();
+    });
+  }
+
   // ---- fullscreen helper -----------------------------------------------
   _fullscreenBtn() {
+    // iOS Safari on iPhone doesn't support requestFullscreen — hide the button.
+    if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) return null;
+
     const btn = document.createElement('button');
     btn.className = 'big-btn';
 
@@ -90,7 +101,6 @@ export class Controls {
       const el = document.documentElement;
       const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
       if (!inFs) {
-        // Use safe-navigation to handle iOS Safari where the method doesn't exist.
         const req = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
         req?.()
           .then(() => screen.orientation?.lock?.('landscape').catch(() => {}))
@@ -112,7 +122,9 @@ export class Controls {
     top.appendChild(title);
     top.appendChild(this._button('🗺️ 2D Map', { onClick: () => this.app.go(VIEW.SOLAR_2D) }));
     top.appendChild(this._button('🌌 Galaxy', { onClick: () => this.app.go(VIEW.GALAXY) }));
-    top.appendChild(this._fullscreenBtn());
+    top.appendChild(this._muteBtn());
+    const fsBtn = this._fullscreenBtn();
+    if (fsBtn) top.appendChild(fsBtn);
 
     const bottom = this._bar('bottom');
 
@@ -151,7 +163,9 @@ export class Controls {
       className: 'back',
       onClick: () => this.app.go(VIEW.SOLAR),
     }));
-    top.appendChild(this._fullscreenBtn());
+    top.appendChild(this._muteBtn());
+    const fsBtn = this._fullscreenBtn();
+    if (fsBtn) top.appendChild(fsBtn);
   }
 
   _renderSolar2D() {
@@ -161,7 +175,9 @@ export class Controls {
     title.textContent = 'Solar System';
     top.appendChild(title);
     top.appendChild(this._button('🌌 3D View', { onClick: () => this.app.go(VIEW.SOLAR) }));
-    top.appendChild(this._fullscreenBtn());
+    top.appendChild(this._muteBtn());
+    const fsBtn = this._fullscreenBtn();
+    if (fsBtn) top.appendChild(fsBtn);
   }
 
   _renderPlanet(planet) {
@@ -171,6 +187,7 @@ export class Controls {
     name.textContent = planet.name;
     top.appendChild(name);
     top.appendChild(this._backToSpace());
+    top.appendChild(this._muteBtn());
 
     const bottom = this._bar('bottom');
 
@@ -198,6 +215,7 @@ export class Controls {
     name.className = 'title-chip';
     name.textContent = `On ${planet.name}`;
     top.appendChild(name);
+    top.appendChild(this._muteBtn());
 
     const bottom = this._bar('bottom');
     bottom.appendChild(

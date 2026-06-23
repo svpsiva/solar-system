@@ -85,6 +85,17 @@ export class Audio {
     });
   }
 
+  mute() {
+    this.enabled = false;
+    window.speechSynthesis?.cancel();
+    if (this._musicNode) this._musicNode.masterGain.gain.value = 0;
+  }
+
+  unmute() {
+    this.enabled = true;
+    if (this._musicNode) this._musicNode.masterGain.gain.value = 0.065;
+  }
+
   // Short generated sound effects.
   // name: 'pop' | 'whoosh' | 'twinkle' | 'land'
   sfx(name) {
