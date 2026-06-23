@@ -1,12 +1,9 @@
 import * as THREE from 'three';
 
 // ── constants ────────────────────────────────────────────────────────────────
-const ARMS        = 4;       // spiral arm count
-const STARS_ARM   = 12000;   // stars per arm
-const STARS_BULGE = 8000;    // central bulge stars
-const STARS_HALO  = 4000;    // sparse outer halo stars
-const GALAXY_R    = 500;     // galaxy radius in scene units
-const SUN_OFFSET  = 0.52;    // Sun is ~26k ly from centre, galaxy R ~50k ly → 52%
+const ARMS       = 4;     // spiral arm count (used for sun marker placement)
+const GALAXY_R   = 500;   // galaxy radius in scene units
+const SUN_OFFSET = 0.52;  // Sun is ~26k ly from centre, galaxy R ~50k ly → 52%
 
 // Camera: starts above our solar system position and pulls out to top-down galaxy view.
 const CAM_START = new THREE.Vector3(SUN_OFFSET * GALAXY_R * 0.18, 30, SUN_OFFSET * GALAXY_R * 0.18);
@@ -42,12 +39,12 @@ export class GalaxyView {
   enter() {
     this.scene.background = new THREE.Color(0x000005);
 
-    // Extend far clip so the full galaxy (r=500, cam up to ~2000 away) is visible.
+    // Extend far clip so the full galaxy (r=500, cam up to ~2000 away plus sky sphere at 3000) is visible.
     this._prevFar = this.camera.far;
     this.camera.far = 8000;
     this.camera.updateProjectionMatrix();
 
-    this._buildGalaxy();
+    this._buildSkySphere();
     this._buildSunMarker();
 
     this.scene.add(this.root);
@@ -74,122 +71,17 @@ export class GalaxyView {
 
   // ── galaxy geometry ──────────────────────────────────────────────────────────
 
-  _buildGalaxy() {
-    const positions = [];
-    const colors    = [];
-    const sizes     = [];
-    const rng       = mulberry32(42);
+  _buildSkySphere() {
+    // Inside-out sphere so the Milky Way texture faces inward toward the camera.
+    const geo = new THREE.SphereGeometry(3000, 64, 32);
+    geo.scale(-1, 1, 1);
+    const tex = new THREE.TextureLoader().load('./textures/milkyway.jpg');
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshBasicMaterial({ map: tex });
+    this._galaxySphere = new THREE.Mesh(geo, mat);
+    this.root.add(this._galaxySphere);
 
-    // Colour palettes
-    const armPalette  = [
-      [0.95, 0.92, 1.00],  // blue-white hot young star
-      [1.00, 0.95, 0.80],  // warm white
-      [0.70, 0.80, 1.00],  // blue-ish
-      [1.00, 0.85, 0.60],  // yellowish
-    ];
-    const bulgePalette = [
-      [1.00, 0.85, 0.55],  // old golden
-      [1.00, 0.75, 0.40],  // orange
-      [1.00, 0.95, 0.70],  // pale yellow
-    ];
-
-    // Spiral arms
-    for (let arm = 0; arm < ARMS; arm++) {
-      const armAngle = (arm / ARMS) * Math.PI * 2;
-      for (let i = 0; i < STARS_ARM; i++) {
-        const t      = rng();                        // 0..1 along arm
-        const r      = 30 + t * GALAXY_R * 0.95;    // distance from centre
-        const spiral = armAngle + t * Math.PI * 3.2; // rotation along arm
-        const spread = (0.06 + t * 0.14) * r;       // arm width grows with r
-        const dx     = (rng() - 0.5) * spread;
-        const dz     = (rng() - 0.5) * spread;
-        const dy     = (rng() - 0.5) * spread * 0.18 * (1 - t * 0.6); // thin disk
-
-        positions.push(
-          Math.cos(spiral) * r + dx,
-          dy,
-          Math.sin(spiral) * r + dz
-        );
-
-        const pal = armPalette[Math.floor(rng() * armPalette.length)];
-        // stars further from centre are redder (older)
-        const redShift = t * 0.35;
-        colors.push(
-          pal[0] - redShift * 0.15,
-          pal[1] - redShift * 0.05,
-          pal[2] - redShift * 0.40
-        );
-        sizes.push(1.2 + rng() * 2.5);
-      }
-    }
-
-    // Central bulge — dense round cluster
-    for (let i = 0; i < STARS_BULGE; i++) {
-      const r   = Math.pow(rng(), 1.6) * GALAXY_R * 0.22;
-      const phi = rng() * Math.PI * 2;
-      const el  = (rng() - 0.5) * Math.PI;
-      positions.push(
-        Math.cos(phi) * Math.cos(el) * r,
-        Math.sin(el)  * r * 0.5,
-        Math.sin(phi) * Math.cos(el) * r
-      );
-      const pal = bulgePalette[Math.floor(rng() * bulgePalette.length)];
-      colors.push(pal[0], pal[1], pal[2]);
-      sizes.push(1.5 + rng() * 3.5);
-    }
-
-    // Outer halo — sparse and blue
-    for (let i = 0; i < STARS_HALO; i++) {
-      const r   = GALAXY_R * (0.8 + rng() * 0.6);
-      const phi = rng() * Math.PI * 2;
-      const el  = (rng() - 0.5) * Math.PI * 0.45;
-      positions.push(
-        Math.cos(phi) * Math.cos(el) * r,
-        Math.sin(el)  * r * 0.2,
-        Math.sin(phi) * Math.cos(el) * r
-      );
-      colors.push(0.65 + rng() * 0.3, 0.70 + rng() * 0.25, 0.85 + rng() * 0.15);
-      sizes.push(0.8 + rng() * 1.5);
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute('color',    new THREE.Float32BufferAttribute(colors,    3));
-    geo.setAttribute('size',     new THREE.Float32BufferAttribute(sizes,     1));
-
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 } },
-      vertexShader: /* glsl */`
-        attribute float size;
-        varying vec3 vColor;
-        uniform float uTime;
-        void main() {
-          vColor = color;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (320.0 / -mvPosition.z);
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: /* glsl */`
-        varying vec3 vColor;
-        void main() {
-          float d = length(gl_PointCoord - vec2(0.5));
-          if (d > 0.5) discard;
-          float alpha = smoothstep(0.5, 0.08, d);
-          gl_FragColor = vec4(vColor * (0.85 + alpha * 0.15), alpha * 0.9);
-        }
-      `,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-
-    this._starsMat = mat;
-    const points = new THREE.Points(geo, mat);
-    this.root.add(points);
-
-    // Glowing core billboard
+    // Glowing core billboard on top of the photo
     const coreTex = _makeGlowTexture(256, [1.0, 0.75, 0.35]);
     const coreSprite = new THREE.Sprite(new THREE.SpriteMaterial({
       map: coreTex,
@@ -201,19 +93,6 @@ export class GalaxyView {
     const coreSize = GALAXY_R * 0.32;
     coreSprite.scale.set(coreSize, coreSize * 0.55, 1);
     this.root.add(coreSprite);
-
-    // Wide faint disk glow
-    const diskTex = _makeGlowTexture(256, [0.4, 0.3, 0.6]);
-    const diskSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: diskTex,
-      color: 0x8866cc,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      opacity: 0.25,
-    }));
-    diskSprite.scale.set(GALAXY_R * 2.6, GALAXY_R * 0.35, 1);
-    this.root.add(diskSprite);
   }
 
   _buildSunMarker() {
@@ -389,11 +268,17 @@ export class GalaxyView {
     this._labelEl?.remove();
     this._labelEl = null;
     this.scene.remove(this.root);
+    if (this._galaxySphere) {
+      this._galaxySphere.geometry.dispose();
+      this._galaxySphere.material.map?.dispose();
+      this._galaxySphere.material.dispose();
+      this._galaxySphere = null;
+    }
     this.root.traverse((obj) => {
       obj.geometry?.dispose();
       if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
-        else obj.material.dispose();
+        if (Array.isArray(obj.material)) obj.material.forEach((m) => { m.map?.dispose(); m.dispose(); });
+        else { obj.material.map?.dispose(); obj.material.dispose(); }
       }
     });
   }
@@ -405,15 +290,6 @@ function easeOut(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function mulberry32(seed) {
-  let a = seed;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function _makeGlowTexture(size, [r, g, b]) {
   const c = document.createElement('canvas');
