@@ -197,56 +197,10 @@ function volcanicSurface(planet) {
   }
   group.add(crackGroup);
 
-  // Volcano cones — wide shield volcanoes (Olympus Mons style: gentle slope, flat).
-  const rng2 = mulberry32(seed + 123);
-  const volcanicLights = [];
-  const coneMat = new THREE.MeshStandardMaterial({ color: 0x2a0c04, roughness: 0.95, flatShading: true });
-  for (let v = 0; v < 7; v++) {
-    const baseR  = 14 + rng2() * 8;
-    const height = 5 + rng2() * 4;
-    const vx = (rng2() - 0.5) * 90;
-    const vz = (rng2() - 0.5) * 90;
-    const vy = terrain.userData.heightAt(vx, vz);
-
-    const craterR = baseR * 0.12;
-    const shieldPoints = [
-      new THREE.Vector2(0,       0),
-      new THREE.Vector2(baseR,   0),
-      new THREE.Vector2(baseR * 0.55, height * 0.55),
-      new THREE.Vector2(baseR * 0.18, height * 0.88),
-      new THREE.Vector2(craterR, height),
-      new THREE.Vector2(0,       height),
-    ];
-    const coneGeo = new THREE.LatheGeometry(shieldPoints, 16);
-    const cone    = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.set(vx, vy, vz);
-    cone.rotation.y = rng2() * Math.PI * 2;
-    group.add(cone);
-
-    // Lava glow at crater tip
-    const light = new THREE.PointLight(0xff4400, 2.0, 14);
-    light.position.set(vx, vy + height + 0.5, vz);
-    group.add(light);
-    volcanicLights.push(light);
-
-    // Small lava pool cap at crater
-    const poolGeo = new THREE.CircleGeometry(craterR * 0.9, 8);
-    poolGeo.rotateX(-Math.PI / 2);
-    const poolMat = new THREE.MeshStandardMaterial({
-      color: 0xff5500, emissive: 0xff3300, emissiveIntensity: 2.0, roughness: 0.1,
-    });
-    const pool = new THREE.Mesh(poolGeo, poolMat);
-    pool.position.set(vx, vy + height + 0.05, vz);
-    group.add(pool);
-  }
-
-  // Lava glow flicker — applies to both cracks and volcano lights/pools
+  // Lava crack flicker
   group.userData.update = (_dt, t) => {
     const flicker = 1.0 + Math.sin(t * 6) * 0.25 + Math.sin(t * 13.7) * 0.15;
     lavaMat.emissiveIntensity = 1.2 * flicker;
-    volcanicLights.forEach((l, i) => {
-      l.intensity = 2.0 * (1.0 + Math.sin(t * 5 + i * 1.3) * 0.3);
-    });
   };
 
   // Fog is applied to the scene by SurfaceView when it enters.
