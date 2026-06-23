@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { VIEW } from '../core/AppState.js';
 import { createPlanet } from '../objects/Planet.js';
+import { createSun } from '../objects/Sun.js';
 import { createMoon } from '../objects/Moon.js';
 import { createStars } from '../objects/Stars.js';
 import { createRocket } from '../objects/Rocket.js';
 import { disposeGroup } from './SolarSystemView.js';
 
-// Close-up of one planet: detailed planet, orbiting moons, rings.
+// Close-up of one planet (or the Sun): detailed body, orbiting moons, rings.
 // 1-finger drag: orbit-rotate camera. 2-finger pinch: zoom. 2-finger drag: pan.
 // Tap a moon to hear its name. Double-tap empty space: re-centre.
 export class PlanetView {
@@ -20,7 +21,7 @@ export class PlanetView {
 
     this.root    = new THREE.Group();
     this.moons   = [];
-    this.moonMeshes = [];
+    this.moonMeshes = []; // invisible oversized hitboxes for raycasting
     this.showMoons  = true;
     this.showRings  = true;
     this.landing    = null;
@@ -32,7 +33,6 @@ export class PlanetView {
     this._maxDist = planet.radius * 9.0 + 4;
 
     // Orbit-camera spherical coordinates around _panTarget.
-    // Initial pitch 0.336 matches original (0, dist*0.35, dist) elevation ratio.
     this._camYaw    = 0;
     this._camPitch  = 0.336;
     this._panTarget = new THREE.Vector3();
@@ -64,7 +64,11 @@ export class PlanetView {
     this.stars = createStars(1200, 400);
     this.root.add(this.stars);
 
-    this.planetGroup = createPlanet(this.planet, { detail: 'high', withRings: true });
+    // Use the dedicated createSun() for the Sun so it glows correctly.
+    // createPlanet() would set rotation.y to NaN (no rotationSpeed on SUN object).
+    this.planetGroup = this.planet.key === 'sun'
+      ? createSun()
+      : createPlanet(this.planet, { detail: 'high', withRings: true });
     this.root.add(this.planetGroup);
 
     this.moonGroup = new THREE.Group();
@@ -72,7 +76,16 @@ export class PlanetView {
       const moon = createMoon(m, (i / Math.max(1, this.planet.moons.length)) * Math.PI * 2);
       this.moonGroup.add(moon.pivot);
       this.moons.push(moon);
-      this.moonMeshes.push(moon.mesh);
+
+      // Invisible oversized hitbox so fat-finger taps still register.
+      const hit = new THREE.Mesh(
+        new THREE.SphereGeometry(Math.max(m.radius * 3, 0.7), 8, 8),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      hit.position.x = m.orbitRadius;
+      hit.userData.moonName = m.name;
+      moon.pivot.add(hit);
+      this.moonMeshes.push(hit);
     });
     this.root.add(this.moonGroup);
 
@@ -141,10 +154,8 @@ export class PlanetView {
       const newMidX = (cur.x + other.x) / 2;
       const newMidY = (cur.y + other.y) / 2;
 
-      // Zoom — scale delta to planet size so pinch feels consistent.
       this._adjustZoom((prevDist - newDist) * this._defaultDist * 0.004);
 
-      // Pan
       const dmx = newMidX - prevMidX;
       const dmy = newMidY - prevMidY;
       if (Math.abs(dmx) > 0.3 || Math.abs(dmy) > 0.3) {
@@ -184,7 +195,7 @@ export class PlanetView {
     const wasTap = this._pointers.size === 1 && this._tapStart !== null;
 
     if (wasTap) {
-      // Check for moon tap first.
+      // Check for moon tap (hitboxes are 3× the visual moon size).
       if (this.showMoons && this.moonMeshes.length > 0) {
         const rect = this.ctx.renderer.renderer.domElement.getBoundingClientRect();
         const ptr  = new THREE.Vector2(
