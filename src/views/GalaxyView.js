@@ -39,12 +39,19 @@ export class GalaxyView {
   enter() {
     this.scene.background = new THREE.Color(0x000005);
 
-    // Extend far clip so the full galaxy (r=500, cam up to ~2000 away plus sky sphere at 3000) is visible.
+    // Extend far clip so the full galaxy (r=500, cam up to ~2000 away) is visible.
     this._prevFar = this.camera.far;
     this.camera.far = 8000;
     this.camera.updateProjectionMatrix();
 
-    this._buildSkySphere();
+    // Load real Milky Way photo as equirectangular background.
+    new THREE.TextureLoader().load('./textures/milkyway.jpg', (tex) => {
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      this.scene.background = tex;
+      this._skyTex = tex;
+    });
+
     this._buildSunMarker();
 
     this.scene.add(this.root);
@@ -70,30 +77,6 @@ export class GalaxyView {
   }
 
   // ── galaxy geometry ──────────────────────────────────────────────────────────
-
-  _buildSkySphere() {
-    // Inside-out sphere so the Milky Way texture faces inward toward the camera.
-    const geo = new THREE.SphereGeometry(3000, 64, 32);
-    geo.scale(-1, 1, 1);
-    const tex = new THREE.TextureLoader().load('./textures/milkyway.jpg');
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const mat = new THREE.MeshBasicMaterial({ map: tex });
-    this._galaxySphere = new THREE.Mesh(geo, mat);
-    this.root.add(this._galaxySphere);
-
-    // Glowing core billboard on top of the photo
-    const coreTex = _makeGlowTexture(256, [1.0, 0.75, 0.35]);
-    const coreSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: coreTex,
-      color: 0xffcc66,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }));
-    const coreSize = GALAXY_R * 0.32;
-    coreSprite.scale.set(coreSize, coreSize * 0.55, 1);
-    this.root.add(coreSprite);
-  }
 
   _buildSunMarker() {
     // Our solar system: arm 0, ~52% out
@@ -241,7 +224,8 @@ export class GalaxyView {
       }
     }
 
-    // Slowly rotate the galaxy disk
+    // Slowly rotate the Milky Way background
+    this.scene.backgroundRotation.y = t * 0.012;
     this.root.rotation.y = t * 0.012;
 
     // Pulse the Sun marker
@@ -267,13 +251,12 @@ export class GalaxyView {
     }
     this._labelEl?.remove();
     this._labelEl = null;
-    this.scene.remove(this.root);
-    if (this._galaxySphere) {
-      this._galaxySphere.geometry.dispose();
-      this._galaxySphere.material.map?.dispose();
-      this._galaxySphere.material.dispose();
-      this._galaxySphere = null;
+    if (this._skyTex) {
+      this._skyTex.dispose();
+      this._skyTex = null;
     }
+    this.scene.backgroundRotation.y = 0;
+    this.scene.remove(this.root);
     this.root.traverse((obj) => {
       obj.geometry?.dispose();
       if (obj.material) {

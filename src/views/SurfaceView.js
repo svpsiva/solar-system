@@ -39,14 +39,6 @@ export class SurfaceView {
     const skyColor = new THREE.Color(surface.skyColor ?? 0x111133);
     this.scene.background = skyColor;
 
-    if (surface.panoramaUrl) {
-      new THREE.TextureLoader().load(surface.panoramaUrl, (tex) => {
-        tex.mapping = THREE.EquirectangularReflectionMapping;
-        tex.colorSpace = THREE.SRGBColorSpace;
-        this.scene.background = tex;
-        this._panoramaTex = tex;
-      });
-    }
 
     // Lighting
     this.ambient = new THREE.AmbientLight(0xffffff, 0.7);
@@ -200,11 +192,6 @@ export class SurfaceView {
   dispose() {
     this._sunSprite?.removeFromParent();
     this._sunSprite = null;
-
-    if (this._panoramaTex) {
-      this._panoramaTex.dispose();
-      this._panoramaTex = null;
-    }
 
     // Clear fog when leaving surface view.
     this.scene.fog = null;
