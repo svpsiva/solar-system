@@ -129,8 +129,6 @@ export class Controls {
   // ---- per-view layouts ------------------------------------------------
   _renderSolar() {
     const top = this._bar('top');
-    top.appendChild(this._button('🗺️ 2D Map', { onClick: () => this.app.go(VIEW.SOLAR_2D) }));
-    top.appendChild(this._button('🌌 Galaxy', { onClick: () => this.app.go(VIEW.GALAXY) }));
 
     const speedWrap = document.createElement('div');
     speedWrap.className = 'speed-wrap';
@@ -158,6 +156,10 @@ export class Controls {
     top.appendChild(this._muteBtn());
     const fsBtn = this._fullscreenBtn();
     if (fsBtn) top.appendChild(fsBtn);
+
+    const map2D = this._button('🗺️ 2D Map', { onClick: () => this.app.go(VIEW.SOLAR_2D) });
+    const galaxy = this._button('🌌 Galaxy', { onClick: () => this.app.go(VIEW.GALAXY) });
+    this._bottomBar([map2D, galaxy], '', []);
   }
 
   _renderGalaxy() {
@@ -193,14 +195,13 @@ export class Controls {
     }
     top.appendChild(this._muteBtn());
 
-    const rightItems = [];
+    const leftItems = [];
     if (planet.surfaceType !== 'gas') {
       const landLabel = planet.key === 'sun' ? '☀️ Visit!' : '🛬 Land!';
-      rightItems.push(this._button(landLabel, { className: 'land', onClick: () => this.view?.land?.() }));
+      leftItems.push(this._button(landLabel, { className: 'land', onClick: () => this.view?.land?.() }));
     }
-    rightItems.push(this._homeBtn());
 
-    this._bottomBar([], planet.name, rightItems);
+    this._bottomBar(leftItems, planet.name, [this._homeBtn()]);
   }
 
   _renderSurface(planet) {
