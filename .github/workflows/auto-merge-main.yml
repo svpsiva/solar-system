@@ -1,0 +1,26 @@
+name: Auto-merge Claude branch to main
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+
+permissions:
+  contents: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # need full history to merge
+          ref: main
+
+      - name: Fast-forward main to the pushed branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git merge --ff-only "origin/${GITHUB_REF#refs/heads/}"
+          git push origin main
