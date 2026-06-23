@@ -197,20 +197,29 @@ function volcanicSurface(planet) {
   }
   group.add(crackGroup);
 
-  // Volcano cones — dark basalt cones with lava glow at the crater tip.
+  // Volcano cones — wide shield volcanoes (Olympus Mons style: gentle slope, flat).
   const rng2 = mulberry32(seed + 123);
   const volcanicLights = [];
   const coneMat = new THREE.MeshStandardMaterial({ color: 0x2a0c04, roughness: 0.95, flatShading: true });
   for (let v = 0; v < 7; v++) {
-    const baseR  = 4 + rng2() * 5;
-    const height = 9 + rng2() * 12;
+    const baseR  = 14 + rng2() * 8;
+    const height = 5 + rng2() * 4;
     const vx = (rng2() - 0.5) * 90;
     const vz = (rng2() - 0.5) * 90;
     const vy = terrain.userData.heightAt(vx, vz);
 
-    const coneGeo = new THREE.ConeGeometry(baseR, height, 8);
+    const craterR = baseR * 0.12;
+    const shieldPoints = [
+      new THREE.Vector2(0,       0),
+      new THREE.Vector2(baseR,   0),
+      new THREE.Vector2(baseR * 0.55, height * 0.55),
+      new THREE.Vector2(baseR * 0.18, height * 0.88),
+      new THREE.Vector2(craterR, height),
+      new THREE.Vector2(0,       height),
+    ];
+    const coneGeo = new THREE.LatheGeometry(shieldPoints, 16);
     const cone    = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.set(vx, vy + height / 2, vz);
+    cone.position.set(vx, vy, vz);
     cone.rotation.y = rng2() * Math.PI * 2;
     group.add(cone);
 
@@ -221,7 +230,7 @@ function volcanicSurface(planet) {
     volcanicLights.push(light);
 
     // Small lava pool cap at crater
-    const poolGeo = new THREE.CircleGeometry(baseR * 0.22, 8);
+    const poolGeo = new THREE.CircleGeometry(craterR * 0.9, 8);
     poolGeo.rotateX(-Math.PI / 2);
     const poolMat = new THREE.MeshStandardMaterial({
       color: 0xff5500, emissive: 0xff3300, emissiveIntensity: 2.0, roughness: 0.1,
