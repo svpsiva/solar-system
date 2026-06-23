@@ -116,10 +116,6 @@ export class Controls {
   // ---- per-view layouts ------------------------------------------------
   _renderSolar() {
     const top = this._bar('top');
-    const title = document.createElement('div');
-    title.className = 'title-chip';
-    title.textContent = "Astro's Space Adventure";
-    top.appendChild(title);
     top.appendChild(this._button('🗺️ 2D Map', { onClick: () => this.app.go(VIEW.SOLAR_2D) }));
     top.appendChild(this._button('🌌 Galaxy', { onClick: () => this.app.go(VIEW.GALAXY) }));
     top.appendChild(this._muteBtn());

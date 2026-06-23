@@ -67,11 +67,11 @@ body {
   left: 0;
   right: 0;
   display: flex;
-  gap: 14px;
+  gap: 8px;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  padding: 16px;
+  padding: 8px 12px;
 }
 
 .control-bar.top {
@@ -86,35 +86,35 @@ body {
   pointer-events: none;
   background: var(--pill);
   color: #fff;
-  font-size: clamp(20px, 4vw, 34px);
+  font-size: clamp(12px, 2vw, 15px);
   font-weight: 700;
-  padding: 10px 24px;
+  padding: 5px 12px;
   border-radius: 999px;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  border: 3px solid rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.15);
 }
 
-/* big toddler buttons */
+/* compact overlay buttons */
 .big-btn {
   pointer-events: auto;
   cursor: pointer;
   border: none;
   border-radius: 999px;
-  padding: 16px 26px;
-  font-size: clamp(18px, 3.4vw, 26px);
+  padding: 8px 14px;
+  font-size: clamp(12px, 2vw, 15px);
   font-weight: 800;
   font-family: inherit;
   color: #fff;
   background: var(--pill);
-  border: 4px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35), 0 8px 18px rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 4px 10px rgba(0, 0, 0, 0.4);
   transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
-  min-height: 64px;
+  min-height: 36px;
 }
 
 .big-btn:active {
-  transform: translateY(4px) scale(0.97);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 4px 10px rgba(0, 0, 0, 0.4);
+  transform: translateY(2px) scale(0.97);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .big-btn.toggle.on {
@@ -126,7 +126,7 @@ body {
 
 .big-btn.land {
   background: linear-gradient(180deg, #ffb142, #ff7042);
-  font-size: clamp(22px, 4.2vw, 30px);
+  font-size: clamp(13px, 2.4vw, 17px);
 }
 
 .big-btn.back {
@@ -138,19 +138,19 @@ body {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   background: var(--pill);
-  padding: 12px 20px;
+  padding: 6px 12px;
   border-radius: 999px;
-  border: 4px solid rgba(255, 255, 255, 0.25);
-  font-size: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  font-size: 18px;
 }
 
 .speed-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: clamp(120px, 28vw, 260px);
-  height: 16px;
+  width: clamp(80px, 18vw, 160px);
+  height: 10px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent2), var(--accent));
   outline: none;
@@ -159,21 +159,21 @@ body {
 .speed-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 38px;
-  height: 38px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #fff;
-  border: 4px solid var(--accent);
+  border: 3px solid var(--accent);
   cursor: pointer;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .speed-slider::-moz-range-thumb {
-  width: 38px;
-  height: 38px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #fff;
-  border: 4px solid var(--accent);
+  border: 3px solid var(--accent);
   cursor: pointer;
 }
 
