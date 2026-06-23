@@ -5,17 +5,24 @@ import { VIEW } from '../core/AppState.js';
 export class Controls {
   constructor(root, app) {
     this.root = root;
-    this.app = app;
+    this.app  = app;
+    this._fsListeners = [];
   }
 
-  get view() {
-    return this.app.current;
-  }
+  get view() { return this.app.current; }
 
   render(viewName, planet) {
+    // Remove any lingering fullscreen event listeners from a previous solar render.
+    this._fsListeners.forEach(([ev, fn]) => {
+      document.removeEventListener(ev, fn);
+      document.removeEventListener('webkit' + ev, fn);
+    });
+    this._fsListeners = [];
+
     this.root.innerHTML = '';
-    if (viewName === VIEW.SOLAR) this._renderSolar();
-    else if (viewName === VIEW.PLANET) this._renderPlanet(planet);
+    if (viewName === VIEW.SOLAR)    this._renderSolar();
+    else if (viewName === VIEW.SOLAR_2D) this._renderSolar2D();
+    else if (viewName === VIEW.PLANET)  this._renderPlanet(planet);
     else if (viewName === VIEW.SURFACE) this._renderSurface(planet);
   }
 
@@ -61,6 +68,40 @@ export class Controls {
     return bar;
   }
 
+  // ---- fullscreen helper -----------------------------------------------
+  _fullscreenBtn() {
+    const btn = document.createElement('button');
+    btn.className = 'big-btn';
+
+    const updateLabel = () => {
+      const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      btn.textContent = inFs ? '✕ Exit Full' : '⛶';
+    };
+    updateLabel();
+
+    const onChange = () => updateLabel();
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    this._fsListeners.push(['fullscreenchange', onChange], ['webkitfullscreenchange', onChange]);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const el = document.documentElement;
+      const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!inFs) {
+        // Use safe-navigation to handle iOS Safari where the method doesn't exist.
+        const req = el.requestFullscreen?.bind(el) ?? el.webkitRequestFullscreen?.bind(el);
+        req?.()
+          .then(() => screen.orientation?.lock?.('landscape').catch(() => {}))
+          .catch(() => {});
+      } else {
+        (document.exitFullscreen ?? document.webkitExitFullscreen)?.call(document);
+      }
+    });
+
+    return btn;
+  }
+
   // ---- per-view layouts ------------------------------------------------
   _renderSolar() {
     const top = this._bar('top');
@@ -68,38 +109,20 @@ export class Controls {
     title.className = 'title-chip';
     title.textContent = "Astro's Space Adventure";
     top.appendChild(title);
-
-    top.appendChild(this._button('⛶', {
-      onClick: () => {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().then(() => {
-            screen.orientation?.lock?.('landscape').catch(() => {});
-          }).catch(() => {});
-        } else {
-          document.exitFullscreen?.();
-        }
-      },
-    }));
+    top.appendChild(this._button('🗺️ 2D Map', { onClick: () => this.app.go(VIEW.SOLAR_2D) }));
+    top.appendChild(this._fullscreenBtn());
 
     const bottom = this._bar('bottom');
 
-    // speed control
     const speedWrap = document.createElement('div');
     speedWrap.className = 'speed-wrap';
-    const slow = document.createElement('span');
-    slow.textContent = '🐢';
-    const fast = document.createElement('span');
-    fast.textContent = '🐇';
+    const slow = document.createElement('span'); slow.textContent = '🐢';
+    const fast = document.createElement('span'); fast.textContent = '🐇';
     const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = '0';
-    slider.max = '5';
-    slider.step = '0.1';
-    slider.value = '1';
+    slider.type = 'range'; slider.min = '0'; slider.max = '5';
+    slider.step = '0.1';   slider.value = '1';
     slider.className = 'speed-slider';
-    slider.addEventListener('input', () => {
-      this.view?.setTimeScale?.(parseFloat(slider.value));
-    });
+    slider.addEventListener('input', () => this.view?.setTimeScale?.(parseFloat(slider.value)));
     speedWrap.append(slow, slider, fast);
 
     const pause = this._toggle('⏸️', '▶️', true, (running) => {
@@ -114,6 +137,16 @@ export class Controls {
     );
 
     bottom.append(speedWrap, pause, asteroids, comets);
+  }
+
+  _renderSolar2D() {
+    const top = this._bar('top');
+    const title = document.createElement('div');
+    title.className = 'title-chip';
+    title.textContent = 'Solar System';
+    top.appendChild(title);
+    top.appendChild(this._button('🌌 3D View', { onClick: () => this.app.go(VIEW.SOLAR) }));
+    top.appendChild(this._fullscreenBtn());
   }
 
   _renderPlanet(planet) {

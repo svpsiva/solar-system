@@ -5,14 +5,16 @@ import { Renderer } from './Renderer.js';
 import { Loop } from './Loop.js';
 import { Audio } from './Audio.js';
 import { SolarSystemView } from '../views/SolarSystemView.js';
+import { SolarSystem2DView } from '../views/SolarSystem2DView.js';
 import { PlanetView } from '../views/PlanetView.js';
 import { SurfaceView } from '../views/SurfaceView.js';
 import { Controls } from '../ui/Controls.js';
 
 export const VIEW = {
-  SOLAR: 'SOLAR',
-  PLANET: 'PLANET',
-  SURFACE: 'SURFACE',
+  SOLAR:    'SOLAR',
+  SOLAR_2D: 'SOLAR_2D',
+  PLANET:   'PLANET',
+  SURFACE:  'SURFACE',
 };
 
 export class AppState {
@@ -53,6 +55,8 @@ export class AppState {
 
     if (viewName === VIEW.SOLAR) {
       this.current = new SolarSystemView(ctx);
+    } else if (viewName === VIEW.SOLAR_2D) {
+      this.current = new SolarSystem2DView(ctx);
     } else if (viewName === VIEW.PLANET) {
       this.current = new PlanetView(ctx, planet);
     } else if (viewName === VIEW.SURFACE) {

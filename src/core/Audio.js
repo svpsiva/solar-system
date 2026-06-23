@@ -118,7 +118,7 @@ export class Audio {
     // Master gain: fade in over 5 s, nothing else touches this AudioParam.
     const masterGain = ctx.createGain();
     masterGain.gain.setValueAtTime(0, ctx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(0.09, ctx.currentTime + 5);
+    masterGain.gain.linearRampToValueAtTime(0.065, ctx.currentTime + 5);
     masterGain.connect(ctx.destination);
 
     // Oscillator output gain (static) — the oscillators connect here, not to masterGain,
@@ -141,19 +141,9 @@ export class Audio {
       return o;
     });
 
-    // A quiet shimmer an octave up — sine only (no harmonics = no buzz).
-    const shimmer = ctx.createOscillator();
-    shimmer.type = 'sine';
-    shimmer.frequency.value = 261.63; // C4
-    shimmer.detune.value = 5;
-    const shimmerGain = ctx.createGain();
-    shimmerGain.gain.value = 0.22;
-    shimmer.connect(shimmerGain).connect(oscGain);
-
     osc.forEach((o) => o.start());
-    shimmer.start();
 
-    this._musicNode = { masterGain, oscGain, osc, shimmer, shimmerGain };
+    this._musicNode = { masterGain, oscGain, osc };
   }
 
   _tone(f0, f1, dur, type, start, gainPeak) {
