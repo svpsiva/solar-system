@@ -79,7 +79,7 @@ export class SolarSystemView {
       group.position.x = planet.orbitRadius;
 
       const hit = new THREE.Mesh(
-        new THREE.SphereGeometry(Math.max(planet.radius * 2.2, 3.0), 16, 16),
+        new THREE.SphereGeometry(Math.max(planet.radius * 4.0, 5.0), 16, 16),
         new THREE.MeshBasicMaterial({ visible: false })
       );
       hit.position.x = planet.orbitRadius;
@@ -235,14 +235,47 @@ export class SolarSystemView {
           this._flyTo(entry);
         }
       } else {
-        // Double-tap on empty space → re-centre pan.
-        const now = performance.now();
-        if (now - this._lastTapTime < 400) {
-          this._panTarget.set(0, 0, 0);
-          this._applyCamera();
-          this._lastTapTime = 0;
+        // Screen-space proximity fallback — find nearest planet within 80px.
+        const rect = this.ctx.renderer.renderer.domElement.getBoundingClientRect();
+        const tapX = e.clientX - rect.left;
+        const tapY = e.clientY - rect.top;
+        const THRESH2 = 80 * 80;
+
+        const toScreen = (worldPos) => {
+          const v = worldPos.clone().project(this.camera);
+          return { x: (v.x + 1) / 2 * rect.width, y: (1 - v.y) / 2 * rect.height };
+        };
+
+        let bestDist = THRESH2;
+        let bestEntry = null;
+
+        for (const entry of this.planetPivots) {
+          const wp = new THREE.Vector3();
+          entry.hit.getWorldPosition(wp);
+          const ps = toScreen(wp);
+          const d2 = (ps.x - tapX) ** 2 + (ps.y - tapY) ** 2;
+          if (d2 < bestDist) { bestDist = d2; bestEntry = entry; }
+        }
+
+        const ss = toScreen(new THREE.Vector3(0, 0, 0));
+        const sunDist2 = (ss.x - tapX) ** 2 + (ss.y - tapY) ** 2;
+
+        if (sunDist2 < THRESH2 && sunDist2 <= bestDist) {
+          this.transitioning = true;
+          this.audio.sfx('whoosh');
+          this.app.go(VIEW.PLANET, SUN);
+        } else if (bestEntry) {
+          this._flyTo(bestEntry);
         } else {
-          this._lastTapTime = now;
+          // Double-tap on empty space → re-centre pan.
+          const now = performance.now();
+          if (now - this._lastTapTime < 400) {
+            this._panTarget.set(0, 0, 0);
+            this._applyCamera();
+            this._lastTapTime = 0;
+          } else {
+            this._lastTapTime = now;
+          }
         }
       }
     }
