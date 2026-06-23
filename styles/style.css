@@ -280,6 +280,24 @@ body {
   opacity: 0;
 }
 
+/* 3-column bottom bar layout */
+.bar-left, .bar-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+.bar-right { justify-content: flex-end; }
+.bar-center { flex: 0; display: flex; align-items: center; }
+
+/* compact icon home button */
+.big-btn.home {
+  padding: 6px 10px;
+  font-size: 18px;
+  min-height: 32px;
+  background: linear-gradient(180deg, #6fa8ff, #3b6fd6);
+}
+
 /* Compact layout for landscape phones (short viewport) */
 @media (orientation: landscape) and (max-height: 480px) {
   .big-btn {
