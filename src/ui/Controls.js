@@ -20,10 +20,11 @@ export class Controls {
     this._fsListeners = [];
 
     this.root.innerHTML = '';
-    if (viewName === VIEW.SOLAR)    this._renderSolar();
+    if (viewName === VIEW.SOLAR)         this._renderSolar();
     else if (viewName === VIEW.SOLAR_2D) this._renderSolar2D();
-    else if (viewName === VIEW.PLANET)  this._renderPlanet(planet);
-    else if (viewName === VIEW.SURFACE) this._renderSurface(planet);
+    else if (viewName === VIEW.GALAXY)   this._renderGalaxy();
+    else if (viewName === VIEW.PLANET)   this._renderPlanet(planet);
+    else if (viewName === VIEW.SURFACE)  this._renderSurface(planet);
   }
 
   // ---- helpers ---------------------------------------------------------
@@ -110,6 +111,7 @@ export class Controls {
     title.textContent = "Astro's Space Adventure";
     top.appendChild(title);
     top.appendChild(this._button('🗺️ 2D Map', { onClick: () => this.app.go(VIEW.SOLAR_2D) }));
+    top.appendChild(this._button('🌌 Galaxy', { onClick: () => this.app.go(VIEW.GALAXY) }));
     top.appendChild(this._fullscreenBtn());
 
     const bottom = this._bar('bottom');
@@ -137,6 +139,19 @@ export class Controls {
     );
 
     bottom.append(speedWrap, pause, asteroids, comets);
+  }
+
+  _renderGalaxy() {
+    const top = this._bar('top');
+    const title = document.createElement('div');
+    title.className = 'title-chip';
+    title.textContent = 'Milky Way Galaxy';
+    top.appendChild(title);
+    top.appendChild(this._button('🚀 Back to Space', {
+      className: 'back',
+      onClick: () => this.app.go(VIEW.SOLAR),
+    }));
+    top.appendChild(this._fullscreenBtn());
   }
 
   _renderSolar2D() {
