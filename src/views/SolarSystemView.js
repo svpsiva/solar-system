@@ -116,7 +116,9 @@ export class SolarSystemView {
     dom.addEventListener('pointercancel', this._onPointerCancel);
     dom.addEventListener('wheel',         this._onWheel, { passive: true });
 
-    this.audio.narrate("Welcome to space! Tap a planet to fly there with Astro.");
+    if (this.app.isFirstVisit(VIEW.SOLAR)) {
+      this.audio.narrate("Welcome to space! Tap a planet to fly there with Astro.");
+    }
   }
 
   // ── camera ───────────────────────────────────────────────────────────────────

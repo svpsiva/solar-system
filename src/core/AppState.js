@@ -27,6 +27,7 @@ export class AppState {
     this.current = null; // active view instance
     this.currentName = null;
     this.currentPlanet = null; // planet config when in PLANET/SURFACE
+    this._visited = new Set();
 
     // wire the per-frame update
     this.loop.add((dt, t) => {
@@ -64,6 +65,11 @@ export class AppState {
     }
 
     this.current.enter();
+    this._visited.add(viewName);
     this.controls.render(viewName, planet);
+  }
+
+  isFirstVisit(viewName) {
+    return !this._visited.has(viewName);
   }
 }

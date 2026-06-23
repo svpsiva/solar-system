@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { SUN } from '../data/planets.js';
+import { subscribeRemoteTexture } from '../utils/textures.js';
 
 // Glowing sun: emissive sphere + additive sprite glow + a point light.
 export function createSun() {
@@ -9,6 +10,11 @@ export function createSun() {
   const mat = new THREE.MeshBasicMaterial({ color: SUN.color });
   const core = new THREE.Mesh(geo, mat);
   group.add(core);
+
+  subscribeRemoteTexture(SUN.textureUrl, (tex) => {
+    mat.map = tex;
+    mat.needsUpdate = true;
+  });
 
   // soft additive glow billboard
   const glowTex = makeGlowTexture();

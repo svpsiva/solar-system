@@ -49,7 +49,9 @@ export class SolarSystem2DView {
     document.body.appendChild(el);
     this._el = el;
 
-    this.audio.narrate('Tap a planet to explore it!');
+    if (this.app.isFirstVisit(VIEW.SOLAR_2D)) {
+      this.audio.narrate('Tap a planet to explore it!');
+    }
   }
 
   _makeCard(body) {
@@ -73,9 +75,11 @@ export class SolarSystem2DView {
       : '';
     circle.style.cssText = [
       `width:${size}px`, `height:${size}px`, 'border-radius:50%',
-      `background:${hex}`,
+      `background-color:${hex}`,
+      `background-image:url(${body.textureUrl})`,
+      'background-size:cover', 'background-position:center',
       glow,
-      'position:relative',
+      'position:relative', 'overflow:hidden',
       'display:flex', 'align-items:center', 'justify-content:center',
       'transition:transform 0.1s ease,box-shadow 0.1s ease',
     ].join(';');
