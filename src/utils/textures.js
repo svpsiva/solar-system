@@ -365,7 +365,97 @@ function neptuneTexture(seed, size, color, color2) {
   return canvas;
 }
 
+// ─── moon-specific generators ────────────────────────────────────────────────
+
+// Europa/Enceladus/Triton: white-blue icy with faint surface cracks.
+function icyMoonTexture(seed, size, color) {
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const img = ctx.createImageData(w, h);
+  const base  = hexToRgb(color);
+  const white = hexToRgb(0xf4f6ff);
+  const blue  = hexToRgb(0xd0ddf0);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const n = fbm((x / w) * 8, (y / h) * 8, { octaves: 5, seed });
+      let c = mix(blue, white, smoothstep(n));
+      c = mix(c, base, 0.25);
+      const i = (y * w + x) * 4;
+      img.data[i] = c.r; img.data[i+1] = c.g; img.data[i+2] = c.b; img.data[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  // Faint crack lines
+  ctx.strokeStyle = 'rgba(160,185,220,0.5)';
+  const rng = mulberry32(seed + 200);
+  for (let k = 0; k < 12; k++) {
+    ctx.lineWidth = 0.5 + rng() * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(rng() * w, rng() * h);
+    ctx.quadraticCurveTo(rng() * w, rng() * h, rng() * w, rng() * h);
+    ctx.stroke();
+  }
+  return canvas;
+}
+
+// Io: yellow-orange sulfur base with dark lava patches.
+function lavaMoonTexture(seed, size) {
+  const canvas = makeCanvas(size);
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const img = ctx.createImageData(w, h);
+  const yellow = hexToRgb(0xe8d050);
+  const orange = hexToRgb(0xd47830);
+  const dark   = hexToRgb(0x402808);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const n  = fbm((x / w) * 7, (y / h) * 7, { octaves: 5, seed });
+      const n2 = fbm((x / w) * 14 + 5, (y / h) * 14 + 5, { octaves: 3, seed: seed + 9 });
+      let c = mix(orange, yellow, smoothstep(n));
+      if (n2 > 0.68) c = mix(c, dark, (n2 - 0.68) / 0.32);
+      const i = (y * w + x) * 4;
+      img.data[i] = c.r; img.data[i+1] = c.g; img.data[i+2] = c.b; img.data[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  // Volcanic hot-spots
+  const rng = mulberry32(seed + 300);
+  for (let k = 0; k < 6; k++) {
+    const cx = rng() * w, cy = rng() * h, r = 4 + rng() * 12;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,100,10,0.7)');
+    g.addColorStop(1, 'rgba(255,100,10,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  }
+  return canvas;
+}
+
+// Titan: orange-brown hazy, like cloudyTexture but warmer.
+function titanMoonTexture(seed, size) {
+  return cloudyTexture(seed, size, 0xd8902a, 0xa86010);
+}
+
 // ─── public API ───────────────────────────────────────────────────────────────
+
+// Returns a procedural THREE.Texture for a moon immediately (cached).
+export function getMoonTexture(moon) {
+  const size = 256;
+  const cacheKey = `moon-${moon.name}-${size}`;
+  if (proceduralCache.has(cacheKey)) return proceduralCache.get(cacheKey);
+
+  const seed = seedFromKey(moon.name);
+  let canvas;
+  switch (moon.textureType) {
+    case 'icy':   canvas = icyMoonTexture(seed, size, moon.color); break;
+    case 'lava':  canvas = lavaMoonTexture(seed, size); break;
+    case 'titan': canvas = titanMoonTexture(seed, size); break;
+    default:      canvas = rockyTexture(seed, size, moon.color, (moon.color & 0xfefefe) >> 1); break;
+  }
+  const tex = toTexture(canvas);
+  proceduralCache.set(cacheKey, tex);
+  return tex;
+}
 
 // Returns a procedural THREE.Texture for a planet immediately (cached).
 // `detail` 'high' uses a larger canvas for the close-up Planet View.

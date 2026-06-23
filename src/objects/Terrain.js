@@ -197,10 +197,47 @@ function volcanicSurface(planet) {
   }
   group.add(crackGroup);
 
-  // Lava glow flicker
+  // Volcano cones — dark basalt cones with lava glow at the crater tip.
+  const rng2 = mulberry32(seed + 123);
+  const volcanicLights = [];
+  const coneMat = new THREE.MeshStandardMaterial({ color: 0x2a0c04, roughness: 0.95, flatShading: true });
+  for (let v = 0; v < 7; v++) {
+    const baseR  = 4 + rng2() * 5;
+    const height = 9 + rng2() * 12;
+    const vx = (rng2() - 0.5) * 90;
+    const vz = (rng2() - 0.5) * 90;
+    const vy = terrain.userData.heightAt(vx, vz);
+
+    const coneGeo = new THREE.ConeGeometry(baseR, height, 8);
+    const cone    = new THREE.Mesh(coneGeo, coneMat);
+    cone.position.set(vx, vy + height / 2, vz);
+    cone.rotation.y = rng2() * Math.PI * 2;
+    group.add(cone);
+
+    // Lava glow at crater tip
+    const light = new THREE.PointLight(0xff4400, 2.0, 14);
+    light.position.set(vx, vy + height + 0.5, vz);
+    group.add(light);
+    volcanicLights.push(light);
+
+    // Small lava pool cap at crater
+    const poolGeo = new THREE.CircleGeometry(baseR * 0.22, 8);
+    poolGeo.rotateX(-Math.PI / 2);
+    const poolMat = new THREE.MeshStandardMaterial({
+      color: 0xff5500, emissive: 0xff3300, emissiveIntensity: 2.0, roughness: 0.1,
+    });
+    const pool = new THREE.Mesh(poolGeo, poolMat);
+    pool.position.set(vx, vy + height + 0.05, vz);
+    group.add(pool);
+  }
+
+  // Lava glow flicker — applies to both cracks and volcano lights/pools
   group.userData.update = (_dt, t) => {
     const flicker = 1.0 + Math.sin(t * 6) * 0.25 + Math.sin(t * 13.7) * 0.15;
     lavaMat.emissiveIntensity = 1.2 * flicker;
+    volcanicLights.forEach((l, i) => {
+      l.intensity = 2.0 * (1.0 + Math.sin(t * 5 + i * 1.3) * 0.3);
+    });
   };
 
   // Fog is applied to the scene by SurfaceView when it enters.
@@ -254,6 +291,57 @@ function earthSurface(planet) {
     clouds.push(s);
   }
 
+  // Trees — billboard sprites (two crossed planes per tree).
+  const treeTex = makeTreeTexture();
+  const treeMat = new THREE.MeshBasicMaterial({
+    map: treeTex, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide,
+  });
+  const treeRng = mulberry32(seed + 88);
+  for (let i = 0; i < 28; i++) {
+    const tx = (treeRng() - 0.5) * 90;
+    const tz = (treeRng() - 0.5) * 90;
+    const th = terrain.userData.heightAt(tx, tz);
+    if (th < 0.3) continue; // skip ocean/beach spots
+    const tall = treeRng() > 0.4;
+    const tw = tall ? 2.5 : 1.8;
+    const theight = tall ? 5.5 : 2.8;
+    // Two crossed planes
+    for (let p = 0; p < 2; p++) {
+      const geo = new THREE.PlaneGeometry(tw, theight);
+      const mesh = new THREE.Mesh(geo, treeMat);
+      mesh.position.set(tx, th + theight / 2, tz);
+      mesh.rotation.y = (p * Math.PI) / 2 + treeRng() * 0.5;
+      group.add(mesh);
+    }
+  }
+
+  // Waterfall — a vertical plane with scrolling UV on a white-streak texture.
+  const wfCanvas = document.createElement('canvas');
+  wfCanvas.width = 64; wfCanvas.height = 256;
+  const wfCtx = wfCanvas.getContext('2d');
+  _drawWaterfall(wfCtx, 0);
+  const wfTex = new THREE.CanvasTexture(wfCanvas);
+  wfTex.wrapS = wfTex.wrapT = THREE.RepeatWrapping;
+  wfTex.repeat.set(1, 2);
+  const wfGeo = new THREE.PlaneGeometry(2.5, 9);
+  const wfMat = new THREE.MeshBasicMaterial({
+    map: wfTex, transparent: true, opacity: 0.82, side: THREE.DoubleSide, depthWrite: false,
+  });
+  const wf = new THREE.Mesh(wfGeo, wfMat);
+  const wfX = 18, wfZ = -22;
+  const wfY = terrain.userData.heightAt(wfX, wfZ) + 4.5;
+  wf.position.set(wfX, wfY, wfZ);
+  group.add(wf);
+
+  // Mist pool at waterfall base
+  const mistTex = makeCloudTexture();
+  const mist = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: mistTex, transparent: true, opacity: 0.55, depthWrite: false,
+  }));
+  mist.scale.set(6, 3, 1);
+  mist.position.set(wfX, terrain.userData.heightAt(wfX, wfZ) + 0.5, wfZ);
+  group.add(mist);
+
   // Gentle sun sparkle on ocean.
   ocean.userData.sparkle = (t) => {
     oceanMat.roughness = 0.05 + Math.sin(t * 3) * 0.02;
@@ -262,6 +350,8 @@ function earthSurface(planet) {
   group.userData.update = (_dt, t) => {
     clouds.forEach((c) => { c.position.x += c.userData.driftX; });
     ocean.userData.sparkle(t);
+    wfTex.offset.y -= _dt * 0.6; // scroll waterfall downward
+    wfTex.needsUpdate = true;
   };
 
   group.userData.fog = new THREE.Fog(0xa8d8ff, 50, 150);
@@ -362,6 +452,57 @@ function icySurface(planet) {
   }
 
   return group;
+}
+
+// ─── tree billboard texture ───────────────────────────────────────────────────
+function makeTreeTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 128;
+  const ctx = c.getContext('2d');
+  // Trunk
+  ctx.fillStyle = '#6b3a1f';
+  ctx.fillRect(26, 80, 12, 48);
+  // Crown layers (three stacked triangles for pine-like shape)
+  const crowns = [
+    { y: 70, r: 28 }, { y: 50, r: 22 }, { y: 30, r: 16 }, { y: 12, r: 10 },
+  ];
+  crowns.forEach(({ y, r }) => {
+    const g = ctx.createRadialGradient(32, y, 0, 32, y, r);
+    g.addColorStop(0, 'rgba(34,120,40,1)');
+    g.addColorStop(0.7, 'rgba(25,90,30,0.9)');
+    g.addColorStop(1, 'rgba(20,70,20,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(32, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// ─── waterfall streak texture ─────────────────────────────────────────────────
+function _drawWaterfall(ctx, _offset) {
+  const w = 64, h = 256;
+  ctx.clearRect(0, 0, w, h);
+  // Base water blue
+  ctx.fillStyle = 'rgba(100,180,255,0.4)';
+  ctx.fillRect(0, 0, w, h);
+  // White streaks
+  for (let i = 0; i < 14; i++) {
+    const x = 4 + i * 4 + (i % 3) * 2;
+    const alpha = 0.4 + Math.random() * 0.5;
+    const streak = ctx.createLinearGradient(x, 0, x, h);
+    streak.addColorStop(0, `rgba(255,255,255,0)`);
+    streak.addColorStop(0.1, `rgba(255,255,255,${alpha})`);
+    streak.addColorStop(0.9, `rgba(255,255,255,${alpha})`);
+    streak.addColorStop(1,   `rgba(255,255,255,0)`);
+    ctx.strokeStyle = streak;
+    ctx.lineWidth = 1 + Math.random();
+    ctx.beginPath();
+    ctx.moveTo(x, 0); ctx.lineTo(x, h);
+    ctx.stroke();
+  }
 }
 
 // ─── cloud sprite texture ─────────────────────────────────────────────────────

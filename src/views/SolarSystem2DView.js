@@ -79,7 +79,7 @@ export class SolarSystem2DView {
       `background-image:url(${body.textureUrl})`,
       'background-size:cover', 'background-position:center',
       glow,
-      'position:relative', 'overflow:hidden',
+      'position:relative',
       'display:flex', 'align-items:center', 'justify-content:center',
       'transition:transform 0.1s ease,box-shadow 0.1s ease',
     ].join(';');

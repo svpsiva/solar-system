@@ -184,10 +184,12 @@ export class Controls {
         this._toggle('💍 Rings: ON', '💍 Rings: OFF', true, (on) => this.view?.toggleRings?.(on))
       );
     }
-    const landLabel = planet.key === 'sun' ? '☀️ Visit!' : '🛬 Land!';
-    bottom.appendChild(
-      this._button(landLabel, { className: 'land', onClick: () => this.view?.land?.() })
-    );
+    if (planet.surfaceType !== 'gas') {
+      const landLabel = planet.key === 'sun' ? '☀️ Visit!' : '🛬 Land!';
+      bottom.appendChild(
+        this._button(landLabel, { className: 'land', onClick: () => this.view?.land?.() })
+      );
+    }
   }
 
   _renderSurface(planet) {
